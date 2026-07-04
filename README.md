@@ -82,13 +82,13 @@ On subsequent pushes, connect GitHub in the Vercel dashboard for automatic deplo
 
 Add these under **Project → Settings → Environment Variables** (Production + Preview):
 
-| Variable | Value |
-|---|---|
-| `GMAIL_USER` | your Gmail address |
-| `GMAIL_APP_PASSWORD` | 16-char App Password from Google |
-| `EMAIL_TO` | address to send the digest to |
-| `ADZUNA_APP_ID` | from developer.adzuna.com |
-| `ADZUNA_APP_KEY` | from developer.adzuna.com |
+| Variable | Value | Required for |
+|---|---|---|
+| `GMAIL_USER` | your Gmail address | daily digest email |
+| `GMAIL_APP_PASSWORD` | 16-char App Password from Google | daily digest email |
+| `EMAIL_TO` | address to send the digest to | daily digest email |
+| `ADZUNA_APP_ID` | from developer.adzuna.com | Adzuna job search |
+| `ADZUNA_APP_KEY` | from developer.adzuna.com | Adzuna job search |
 
 ## Daily digest cron job
 
