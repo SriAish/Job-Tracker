@@ -1,0 +1,17 @@
+{
+  "name": "job-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run client\" \"npm run vercel-dev\"",
+    "client": "cd client && npm run dev",
+    "vercel-dev": "vercel dev"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "vercel": "^37.0.0"
+  }
+}
