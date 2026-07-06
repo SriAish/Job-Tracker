@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run client\" \"npm run vercel-dev\"",
-    "client": "cd client && npm run dev",
+    "dev": "cd client && npm run dev",
     "vercel-dev": "vercel dev"
   },
   "dependencies": {
