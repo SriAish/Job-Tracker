@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { storage } from '../storage'
 import { ROLE_KEYWORDS, COMPANY_PORTALS, QUICK_LINKS } from '../constants'
 import AddApplicationModal from '../components/AddApplicationModal'
@@ -201,6 +201,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [maxYears, setMaxYears] = useState(8)
   const [boards, setBoards] = useState({ greenhouse: true, ashby: true, lever: true, adzuna: true })
   const [recency, setRecency] = useState('any') // 'any' | '48h' | '24h'
+  const [rawJobs, setRawJobs] = useState([])   // full deduped results from last fetch
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('')
@@ -213,26 +214,49 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
            a.company.toLowerCase() === job.company.toLowerCase()
     ), [applications])
 
-  async function handleSearch() {
-    setLoading(true)
-    setStatus('')
-    setJobs([])
-
-    const cutoffMs = recency === '24h' ? Date.now() - 24 * 60 * 60 * 1000
-      : recency === '48h' ? Date.now() - 48 * 60 * 60 * 1000
-      : 0
-    const withinRecency = (postedAt) => {
+  // Re-apply display filters instantly whenever rawJobs or any filter changes.
+  // No network calls — just in-memory filtering of the last fetch.
+  useEffect(() => {
+    if (!rawJobs.length) return
+    const cutoffMs = recency === '24h' ? Date.now() - 86400000
+      : recency === '48h' ? Date.now() - 172800000 : 0
+    const withinCutoff = (postedAt) => {
       if (!cutoffMs || !postedAt) return true
       const ts = new Date(postedAt).getTime()
       return isNaN(ts) ? true : ts >= cutoffMs
     }
+    const dated = rawJobs.filter(j => withinCutoff(j.postedAt))
+    let result = usOnly ? dated.filter(j => isUS(j.location)) : dated
+    let expDropped = 0
+    if (expFilter) {
+      const before = result.length
+      result = result.filter(j => {
+        const yrs = extractMaxYears(j.description)
+        return yrs === null || yrs <= maxYears
+      })
+      expDropped = before - result.length
+    }
+    const nonUS = dated.length - (usOnly ? dated.filter(j => isUS(j.location)).length : dated.length)
+    const parts = [`${result.length} results`]
+    if (recency !== 'any') parts.push(`last ${recency}`)
+    if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
+    if (expFilter && expDropped) parts.push(`${expDropped} over ${maxYears}yr exp hidden`)
+    setJobs(result)
+    setStatus(parts.join(' · '))
+  }, [rawJobs, recency, usOnly, expFilter, maxYears])
+
+  async function handleSearch() {
+    setLoading(true)
+    setStatus('')
+    setJobs([])
+    setRawJobs([])
+
     const adzunaMaxDaysOld = recency === '24h' ? 1 : recency === '48h' ? 2 : 7
 
     const companies = storage.getCompanies()
     const ashbyCompanies = storage.getAshbyCompanies()
     const leverCompanies = storage.getLeverCompanies()
 
-    // One server-side call fetches all boards in parallel, avoiding per-company cold starts.
     const activeBoards = [
       boards.greenhouse && 'Greenhouse',
       boards.ashby && 'Ashby',
@@ -278,24 +302,8 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
       }
     }
 
-    const deduped = [...map.values()].filter(j => withinRecency(j.postedAt))
-    let result = usOnly ? deduped.filter(j => isUS(j.location)) : deduped
-    let expDropped = 0
-    if (expFilter) {
-      const before = result.length
-      result = result.filter(j => {
-        const yrs = extractMaxYears(j.description)
-        return yrs === null || yrs <= maxYears
-      })
-      expDropped = before - result.length
-    }
-    const nonUS = deduped.length - (usOnly ? deduped.filter(j => isUS(j.location)).length : deduped.length)
-    const parts = [`${result.length} results`]
-    if (recency !== 'any') parts.push(`last ${recency}`)
-    if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
-    if (expFilter && expDropped) parts.push(`${expDropped} over ${maxYears}yr exp hidden`)
-    setJobs(result)
-    setStatus(parts.join(' · '))
+    // Store full deduped set — useEffect above applies date/US/exp filters reactively
+    setRawJobs([...map.values()])
     setLoading(false)
   }
 
