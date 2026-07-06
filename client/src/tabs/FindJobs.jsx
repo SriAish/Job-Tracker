@@ -123,16 +123,15 @@ const ADZUNA_MODE2_CALLS = [
   { title_only: 'program manager' },
   { title_only: 'strategy' },
 ]
-const ADZUNA_MODE2_COMMON = { max_days_old: 7, results_per_page: 50 }
-
-async function fetchAdzunaMode2(existingKeys, onProgress) {
+async function fetchAdzunaMode2(existingKeys, onProgress, maxDaysOld = 7) {
+  const common = { max_days_old: maxDaysOld, results_per_page: 50 }
   const results = []
   for (let i = 0; i < ADZUNA_MODE2_CALLS.length; i++) {
     const kw = ADZUNA_MODE2_CALLS[i]
     const label = Object.values(kw)[0]
     onProgress(`Adzuna: searching "${label}"…`)
     try {
-      const jobs = await callAdzuna({ ...ADZUNA_MODE2_COMMON, ...kw })
+      const jobs = await callAdzuna({ ...common, ...kw })
       const normalized = jobs
         .filter(j => matchesKeywords(j.title ?? ''))
         .map(normalizeAdzuna)
@@ -201,6 +200,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [expFilter, setExpFilter] = useState(true)
   const [maxYears, setMaxYears] = useState(8)
   const [boards, setBoards] = useState({ greenhouse: true, ashby: true, lever: true, adzuna: true })
+  const [recency, setRecency] = useState('any') // 'any' | '48h' | '24h'
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('')
@@ -218,39 +218,34 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     setStatus('')
     setJobs([])
 
+    const cutoffMs = recency === '24h' ? Date.now() - 24 * 60 * 60 * 1000
+      : recency === '48h' ? Date.now() - 48 * 60 * 60 * 1000
+      : 0
+    const withinRecency = (postedAt) => {
+      if (!cutoffMs || !postedAt) return true
+      const ts = new Date(postedAt).getTime()
+      return isNaN(ts) ? true : ts >= cutoffMs
+    }
+    const adzunaMaxDaysOld = recency === '24h' ? 1 : recency === '48h' ? 2 : 7
+
     const companies = storage.getCompanies()
     const ashbyCompanies = storage.getAshbyCompanies()
     const leverCompanies = storage.getLeverCompanies()
-    const ghJobs = []
 
-    if (boards.greenhouse) {
-      for (let i = 0; i < companies.length; i += 5) {
-        const batch = companies.slice(i, i + 5)
-        setStatus(`Greenhouse: ${batch.map(c => c.name).join(', ')}…`)
-        const batchJobs = await fetchGreenhouseBatch(batch)
-        ghJobs.push(...batchJobs)
-      }
-    }
+    // Fetch all three boards in parallel — each board already parallelises
+    // its own company list internally via Promise.allSettled.
+    const activeBoards = [
+      boards.greenhouse && 'Greenhouse',
+      boards.ashby && 'Ashby',
+      boards.lever && 'Lever',
+    ].filter(Boolean)
+    if (activeBoards.length) setStatus(`Searching ${activeBoards.join(', ')}…`)
 
-    const abJobs = []
-    if (boards.ashby) {
-      for (let i = 0; i < ashbyCompanies.length; i += 5) {
-        const batch = ashbyCompanies.slice(i, i + 5)
-        setStatus(`Ashby: ${batch.map(c => c.name).join(', ')}…`)
-        const batchJobs = await fetchAshbyBatch(batch)
-        abJobs.push(...batchJobs)
-      }
-    }
-
-    const lvJobs = []
-    if (boards.lever) {
-      for (let i = 0; i < leverCompanies.length; i += 5) {
-        const batch = leverCompanies.slice(i, i + 5)
-        setStatus(`Lever: ${batch.map(c => c.name).join(', ')}…`)
-        const batchJobs = await fetchLeverBatch(batch)
-        lvJobs.push(...batchJobs)
-      }
-    }
+    const [ghJobs, abJobs, lvJobs] = await Promise.all([
+      boards.greenhouse ? fetchGreenhouseBatch(companies) : Promise.resolve([]),
+      boards.ashby      ? fetchAshbyBatch(ashbyCompanies) : Promise.resolve([]),
+      boards.lever      ? fetchLeverBatch(leverCompanies) : Promise.resolve([]),
+    ])
 
     // Dedup — greenhouse > ashby > lever (primary sources)
     const map = new Map()
@@ -266,14 +261,14 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
 
     // Adzuna keyword discovery — serialized, runs after primary dedup
     if (boards.adzuna) {
-      const azJobs = await fetchAdzunaMode2(new Set(map.keys()), setStatus)
+      const azJobs = await fetchAdzunaMode2(new Set(map.keys()), setStatus, adzunaMaxDaysOld)
       for (const j of azJobs) {
         const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`
         if (!map.has(key)) map.set(key, j)
       }
     }
 
-    const deduped = [...map.values()]
+    const deduped = [...map.values()].filter(j => withinRecency(j.postedAt))
     let result = usOnly ? deduped.filter(j => isUS(j.location)) : deduped
     let expDropped = 0
     if (expFilter) {
@@ -286,6 +281,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     }
     const nonUS = deduped.length - (usOnly ? deduped.filter(j => isUS(j.location)).length : deduped.length)
     const parts = [`${result.length} results`]
+    if (recency !== 'any') parts.push(`last ${recency}`)
     if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
     if (expFilter && expDropped) parts.push(`${expDropped} over ${maxYears}yr exp hidden`)
     setJobs(result)
@@ -340,8 +336,8 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         </button>
       </div>
 
-      {/* Board toggles */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+      {/* Board toggles + recency filter */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         {[
           { key: 'greenhouse', label: 'Greenhouse', active: '#1a2f5e', activeText: '#7ca4c8', activeBorder: '#2a4a8e' },
           { key: 'ashby',      label: 'Ashby',      active: '#1e1a3a', activeText: '#a78bfa', activeBorder: '#4c1d95' },
@@ -368,6 +364,24 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         <span style={{ fontSize: 11, color: '#456', alignSelf: 'center', marginLeft: 2 }}>
           {Object.values(boards).filter(Boolean).length === 0 ? 'Select at least one board' : ''}
         </span>
+
+        {/* Recency filter */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, border: '1px solid #1e2e42', borderRadius: 4, overflow: 'hidden' }}>
+          {[{ key: 'any', label: 'Any time' }, { key: '48h', label: '48h' }, { key: '24h', label: '24h' }].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setRecency(key)}
+              style={{
+                padding: '3px 9px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                border: 'none', borderRadius: 0,
+                background: recency === key ? '#1e2e42' : 'transparent',
+                color: recency === key ? '#e0f0ff' : '#456',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {status && !loading && (
