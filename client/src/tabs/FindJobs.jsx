@@ -232,8 +232,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     const ashbyCompanies = storage.getAshbyCompanies()
     const leverCompanies = storage.getLeverCompanies()
 
-    // Fetch all three boards in parallel — each board already parallelises
-    // its own company list internally via Promise.allSettled.
+    // One server-side call fetches all boards in parallel, avoiding per-company cold starts.
     const activeBoards = [
       boards.greenhouse && 'Greenhouse',
       boards.ashby && 'Ashby',
@@ -241,22 +240,33 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     ].filter(Boolean)
     if (activeBoards.length) setStatus(`Searching ${activeBoards.join(', ')}…`)
 
-    const [ghJobs, abJobs, lvJobs] = await Promise.all([
-      boards.greenhouse ? fetchGreenhouseBatch(companies) : Promise.resolve([]),
-      boards.ashby      ? fetchAshbyBatch(ashbyCompanies) : Promise.resolve([]),
-      boards.lever      ? fetchLeverBatch(leverCompanies) : Promise.resolve([]),
-    ])
-
-    // Dedup — greenhouse > ashby > lever (primary sources)
-    const map = new Map()
-    for (const j of ghJobs) map.set(`${j.title.toLowerCase()}|${j.company.toLowerCase()}`, j)
-    for (const j of abJobs) {
-      const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`
-      if (!map.has(key)) map.set(key, j)
+    let boardJobs = []
+    if (activeBoards.length) {
+      try {
+        const r = await fetch('/api/boards', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            greenhouse: boards.greenhouse ? companies : [],
+            ashby:      boards.ashby      ? ashbyCompanies : [],
+            lever:      boards.lever      ? leverCompanies : [],
+            keywords:   ROLE_KEYWORDS,
+          }),
+        })
+        const data = await r.json()
+        boardJobs = data.jobs ?? []
+      } catch (e) {
+        console.warn('boards fetch failed:', e.message)
+      }
     }
-    for (const j of lvJobs) {
-      const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`
-      if (!map.has(key)) map.set(key, j)
+
+    // Dedup — greenhouse > ashby > lever (priority order)
+    const map = new Map()
+    for (const src of ['greenhouse', 'ashby', 'lever']) {
+      for (const j of boardJobs.filter(j => j.source === src)) {
+        const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`
+        if (!map.has(key)) map.set(key, j)
+      }
     }
 
     // Adzuna keyword discovery — serialized, runs after primary dedup
