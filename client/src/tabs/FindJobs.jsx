@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { storage } from '../storage'
 import { ROLE_KEYWORDS } from '../constants'
 import AddApplicationModal from '../components/AddApplicationModal'
-import { COLORS, cardStyle, inputStyle, primaryButtonStyle } from '../theme'
+import { COLORS, cardStyle, primaryButtonStyle } from '../theme'
 
 const STATE_RE = /[,\s](al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc)(\s*[,;]|\s*$)/i
 const US_STATE_NAME_RE = /,\s*(alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)(\s*,|\s*$)/i
@@ -31,6 +31,11 @@ function extractMaxYears(text) {
   return found ? max : null
 }
 
+function matchesKeywords(text) {
+  const lower = text.toLowerCase()
+  return ROLE_KEYWORDS.some(kw => lower.includes(kw))
+}
+
 // ── Adzuna ────────────────────────────────────────────────────────────────────
 
 // area = ["US", "Maryland", "Montgomery County", "Rockville"]
@@ -57,6 +62,9 @@ function normalizeAdzuna(job) {
   }
 }
 
+const _adzunaSleep = ms => new Promise(r => setTimeout(r, ms))
+
+// Serialize calls with 400ms gap to stay under Adzuna's ~2 req/sec rate limit.
 async function callAdzuna(params) {
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params).filter(([, v]) => v != null))
@@ -75,9 +83,38 @@ async function callAdzuna(params) {
   return data.results ?? []   // 200 + empty array is valid data, not an error
 }
 
-async function fetchAdzunaKeyword(query, maxDaysOld = 7) {
-  const jobs = await callAdzuna({ what: query, max_days_old: maxDaysOld, results_per_page: 50 })
-  return jobs.map(normalizeAdzuna)
+// Mode 2 only in the frontend — keyword discovery via title_only calls.
+// Mode 1 (company backstop) is cron-only: too many calls for a UI search.
+const ADZUNA_MODE2_CALLS = [
+  { title_only: 'product manager' },
+  { title_only: 'ai agent' },
+  { title_only: 'venture capital' },
+  { title_only: 'chief of staff' },
+  { title_only: 'generative ai' },
+  { title_only: 'go-to-market' },
+  { title_only: 'program manager' },
+  { title_only: 'strategy' },
+]
+async function fetchAdzunaMode2(existingKeys, onProgress, maxDaysOld = 7) {
+  const common = { max_days_old: maxDaysOld, results_per_page: 50 }
+  const results = []
+  for (let i = 0; i < ADZUNA_MODE2_CALLS.length; i++) {
+    const kw = ADZUNA_MODE2_CALLS[i]
+    const label = Object.values(kw)[0]
+    onProgress(`Adzuna: searching "${label}"…`)
+    try {
+      const jobs = await callAdzuna({ ...common, ...kw })
+      const normalized = jobs
+        .filter(j => matchesKeywords(j.title ?? ''))
+        .map(normalizeAdzuna)
+        .filter(j => !existingKeys.has(`${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`))
+      results.push(...normalized)
+    } catch (e) {
+      console.warn(`Adzuna "${label}":`, e.message)
+    }
+    if (i < ADZUNA_MODE2_CALLS.length - 1) await _adzunaSleep(400)
+  }
+  return results
 }
 
 // ── Greenhouse / Ashby / Lever (shared boards endpoint) ─────────────────────────
@@ -94,8 +131,6 @@ async function fetchBoards({ greenhouse, ashby, lever }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DEFAULT_QUERY = '"product manager" OR "strategy" OR "venture capital" OR "operations"'
-
 const SOURCE_PILLS = [
   { key: 'greenhouse', label: 'Greenhouse' },
   { key: 'adzuna',     label: 'Adzuna' },
@@ -104,7 +139,6 @@ const SOURCE_PILLS = [
 ]
 
 export default function FindJobs({ applications, resumes, onAddApplication }) {
-  const [query, setQuery] = useState(DEFAULT_QUERY)
   const [sources, setSources] = useState({ greenhouse: true, adzuna: true, ashby: true, lever: true })
   const [recency, setRecency] = useState('any') // 'any' | '48h' | '24h'
   const [usOnly, setUsOnly] = useState(true)
@@ -117,7 +151,6 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [expanded, setExpanded] = useState({})
   const [addModal, setAddModal] = useState(null)
 
-  const onlyGreenhouse = sources.greenhouse && !sources.adzuna && !sources.ashby && !sources.lever
   const noSourceActive = !sources.greenhouse && !sources.adzuna && !sources.ashby && !sources.lever
 
   const isTracked = useCallback((job) =>
@@ -167,28 +200,29 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
 
   async function handleSearch() {
     setLoading(true)
-    setStatus('Searching…')
+    setStatus('')
     setJobs([])
     setRawJobs([])
 
     const adzunaMaxDaysOld = recency === '24h' ? 1 : recency === '48h' ? 2 : 7
 
-    const boardsPromise = (sources.greenhouse || sources.ashby || sources.lever)
-      ? fetchBoards({
-          greenhouse: sources.greenhouse ? storage.getCompanies() : [],
-          ashby:      sources.ashby      ? storage.getAshbyCompanies() : [],
-          lever:      sources.lever      ? storage.getLeverCompanies() : [],
-        }).catch(e => { console.warn('boards fetch failed:', e.message); return [] })
-      : Promise.resolve([])
+    const activeBoards = [
+      sources.greenhouse && 'Greenhouse',
+      sources.ashby && 'Ashby',
+      sources.lever && 'Lever',
+    ].filter(Boolean)
+    if (activeBoards.length) setStatus(`Searching ${activeBoards.join(', ')}…`)
 
-    const adzunaPromise = (sources.adzuna && query.trim())
-      ? fetchAdzunaKeyword(query.trim(), adzunaMaxDaysOld)
-          .catch(e => { console.warn('Adzuna fetch failed:', e.message); return [] })
-      : Promise.resolve([])
+    let boardJobs = []
+    if (activeBoards.length) {
+      boardJobs = await fetchBoards({
+        greenhouse: sources.greenhouse ? storage.getCompanies() : [],
+        ashby:      sources.ashby      ? storage.getAshbyCompanies() : [],
+        lever:      sources.lever      ? storage.getLeverCompanies() : [],
+      }).catch(e => { console.warn('boards fetch failed:', e.message); return [] })
+    }
 
-    const [boardJobs, adzunaJobs] = await Promise.all([boardsPromise, adzunaPromise])
-
-    // Dedup — greenhouse wins on conflict, then ashby, then lever, then adzuna last.
+    // Dedup — greenhouse > ashby > lever (priority order)
     const map = new Map()
     for (const src of ['greenhouse', 'ashby', 'lever']) {
       for (const j of boardJobs.filter(j => j.source === src)) {
@@ -196,9 +230,14 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         if (!map.has(key)) map.set(key, j)
       }
     }
-    for (const j of adzunaJobs) {
-      const key = `${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`
-      if (!map.has(key)) map.set(key, j)
+
+    // Adzuna keyword discovery — serialized, runs after primary dedup
+    if (sources.adzuna) {
+      const azJobs = await fetchAdzunaMode2(new Set(map.keys()), setStatus, adzunaMaxDaysOld)
+      for (const j of azJobs) {
+        const key = `${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`
+        if (!map.has(key)) map.set(key, j)
+      }
     }
 
     // Store full deduped set — useEffect above applies date/US/exp filters reactively
@@ -208,26 +247,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
 
   return (
     <div>
-      {/* Row 1 — search bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <input
-          value={onlyGreenhouse ? '' : query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !onlyGreenhouse && handleSearch()}
-          disabled={onlyGreenhouse}
-          placeholder={onlyGreenhouse ? 'Greenhouse fetches all roles — keyword search unused' : 'Keywords, e.g. product manager'}
-          style={{ ...inputStyle, flex: 1, opacity: onlyGreenhouse ? 0.5 : 1, cursor: onlyGreenhouse ? 'not-allowed' : 'text' }}
-        />
-        <button
-          onClick={handleSearch}
-          disabled={loading || noSourceActive}
-          style={{ ...primaryButtonStyle, opacity: noSourceActive ? 0.4 : 1 }}
-        >
-          {loading ? 'Searching…' : 'Search'}
-        </button>
-      </div>
-
-      {/* Row 2 — source pills + time filter */}
+      {/* Row 1 — source pills + time filter + search */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         {SOURCE_PILLS.map(({ key, label }) => {
           const on = sources[key]
@@ -249,21 +269,30 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         })}
 
         {/* Time filter */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, border: `1px solid ${COLORS.border}`, borderRadius: 6, overflow: 'hidden' }}>
-          {[{ key: 'any', label: 'Any time' }, { key: '48h', label: '48h' }, { key: '24h', label: '24h' }].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setRecency(key)}
-              style={{
-                padding: '4px 10px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                border: 'none', borderRadius: 0,
-                background: recency === key ? COLORS.accentSoft : 'transparent',
-                color: recency === key ? COLORS.accent : COLORS.textMuted,
-              }}
-            >
-              {label}
-            </button>
-          ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 2, border: `1px solid ${COLORS.border}`, borderRadius: 6, overflow: 'hidden' }}>
+            {[{ key: 'any', label: 'Any time' }, { key: '48h', label: '48h' }, { key: '24h', label: '24h' }].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setRecency(key)}
+                style={{
+                  padding: '4px 10px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                  border: 'none', borderRadius: 0,
+                  background: recency === key ? COLORS.accentSoft : 'transparent',
+                  color: recency === key ? COLORS.accent : COLORS.textMuted,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleSearch}
+            disabled={loading || noSourceActive}
+            style={{ ...primaryButtonStyle, opacity: noSourceActive ? 0.4 : 1 }}
+          >
+            {loading ? 'Searching…' : 'Search'}
+          </button>
         </div>
       </div>
 
