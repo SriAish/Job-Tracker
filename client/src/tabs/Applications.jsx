@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { STATUSES } from '../constants'
 import StatusBadge from '../components/StatusBadge'
 import AddApplicationModal from '../components/AddApplicationModal'
+import { COLORS, cardStyle, inputStyle, primaryButtonStyle } from '../theme'
 
 const FILTERS = ['All', 'Not Applied', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Withdrawn']
 
@@ -52,14 +53,14 @@ export default function Applications({ applications, resumes, onUpdate }) {
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         {Object.entries(counts).map(([k, v]) => (
           <div key={k} style={{
-            padding: '8px 14px', background: '#0d1520', border: '1px solid #1e2e42',
-            borderRadius: 5, flex: 1, textAlign: 'center',
+            ...cardStyle,
+            padding: '8px 14px', flex: 1, textAlign: 'center',
           }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#e0f0ff' }}>{v}</div>
-            <div style={{ fontSize: 10, color: '#456', marginTop: 1 }}>{k}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.text }}>{v}</div>
+            <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>{k}</div>
           </div>
         ))}
       </div>
@@ -69,25 +70,22 @@ export default function Applications({ applications, resumes, onUpdate }) {
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{
-              padding: '4px 10px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
-              background: filter === f ? '#4f46e5' : 'transparent',
-              color: filter === f ? '#fff' : '#7ca4c8',
-              border: filter === f ? '1px solid #4f46e5' : '1px solid #1e2e42',
+              padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+              background: filter === f ? COLORS.accent : COLORS.panel,
+              color: filter === f ? '#fff' : COLORS.textSecondary,
+              border: filter === f ? `1px solid ${COLORS.accent}` : `1px solid ${COLORS.border}`,
             }}>
               {f}
             </button>
           ))}
         </div>
-        <button onClick={() => setAddOpen(true)} style={{
-          padding: '5px 14px', background: '#4f46e5', color: '#fff',
-          border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
-        }}>
+        <button onClick={() => setAddOpen(true)} style={primaryButtonStyle}>
           + Add
         </button>
       </div>
 
       {filtered.length === 0 && (
-        <div style={{ color: '#456', fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
+        <div style={{ color: COLORS.textMuted, fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
           No applications{filter !== 'All' ? ` with status "${filter}"` : ''}.
         </div>
       )}
@@ -131,25 +129,25 @@ function AppCard({ app, resumes, expanded, onToggle, onStatusChange, onEdit, onD
   const date = fmt(app.appliedAt || app.createdAt)
 
   return (
-    <div style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, marginBottom: 5 }}>
+    <div style={{ ...cardStyle, marginBottom: 6 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px' }}>
-        <button onClick={onToggle} style={{ background: 'none', border: 'none', color: '#456', cursor: 'pointer', fontSize: 9, padding: 0, flexShrink: 0, width: 12 }}>
+        <button onClick={onToggle} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 9, padding: 0, flexShrink: 0, width: 12 }}>
           {expanded ? '▼' : '▶'}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             {app.url
-              ? <a href={app.url} target="_blank" rel="noopener noreferrer" style={{ color: '#e0f0ff', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>{app.title}</a>
-              : <span style={{ color: '#e0f0ff', fontSize: 13, fontWeight: 500 }}>{app.title}</span>
+              ? <a href={app.url} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.text, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>{app.title}</a>
+              : <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 500 }}>{app.title}</span>
             }
-            <span style={{ color: '#7ca4c8', fontSize: 12 }}>{app.company}</span>
-            {app.location && <span style={{ color: '#456', fontSize: 11 }}>{app.location}</span>}
+            <span style={{ color: COLORS.textSecondary, fontSize: 12 }}>{app.company}</span>
+            {app.location && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{app.location}</span>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
             <StatusBadge status={app.status} onChange={onStatusChange} />
-            {resume && <span style={{ fontSize: 11, color: '#456' }}>📄 {resume.name}</span>}
-            {app.source && <span style={{ fontSize: 11, color: '#456' }}>{app.source}</span>}
-            {date && <span style={{ fontSize: 11, color: '#456' }}>{date}</span>}
+            {resume && <span style={{ fontSize: 11, color: COLORS.textMuted }}>📄 {resume.name}</span>}
+            {app.source && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{app.source}</span>}
+            {date && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{date}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -158,19 +156,19 @@ function AppCard({ app, resumes, expanded, onToggle, onStatusChange, onEdit, onD
         </div>
       </div>
       {expanded && (
-        <div style={{ padding: '8px 12px 10px 32px', borderTop: '1px solid #111e2e' }}>
+        <div style={{ padding: '8px 12px 10px 32px', borderTop: `1px solid ${COLORS.border}` }}>
           {app.description && (
-            <div style={{ fontSize: 12, color: '#7ca4c8', lineHeight: 1.6, marginBottom: app.notes ? 8 : 0 }}>
+            <div style={{ fontSize: 12, color: COLORS.textSecondary, lineHeight: 1.6, marginBottom: app.notes ? 8 : 0 }}>
               {app.description}
             </div>
           )}
           {app.notes && (
-            <div style={{ fontSize: 12, color: '#7ca4c8', lineHeight: 1.6 }}>
-              <span style={{ color: '#456', fontWeight: 600 }}>Notes: </span>{app.notes}
+            <div style={{ fontSize: 12, color: COLORS.textSecondary, lineHeight: 1.6 }}>
+              <span style={{ color: COLORS.textMuted, fontWeight: 600 }}>Notes: </span>{app.notes}
             </div>
           )}
           {!app.description && !app.notes && (
-            <span style={{ fontSize: 12, color: '#456' }}>No description or notes.</span>
+            <span style={{ fontSize: 12, color: COLORS.textMuted }}>No description or notes.</span>
           )}
         </div>
       )}
@@ -181,10 +179,10 @@ function AppCard({ app, resumes, expanded, onToggle, onStatusChange, onEdit, onD
 function EditCard({ app, resumes, onSave, onCancel }) {
   const [form, setForm] = useState({ ...app })
   function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
-  const inp = { padding: '5px 8px', background: '#060d16', border: '1px solid #1e2e42', borderRadius: 4, color: '#e0f0ff', fontSize: 12, fontFamily: 'inherit', outline: 'none' }
+  const inp = { ...inputStyle, padding: '5px 8px', fontSize: 12 }
 
   return (
-    <div style={{ background: '#0a1628', border: '1px solid #2a4a8e', borderRadius: 6, marginBottom: 5, padding: '12px 14px' }}>
+    <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.accent}`, borderRadius: 8, marginBottom: 6, padding: '12px 14px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input style={inp} value={form.title} onChange={e => set('title', e.target.value)} placeholder="Title" />
         <input style={inp} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Company" />
@@ -213,10 +211,10 @@ function EditCard({ app, resumes, onSave, onCancel }) {
 function Btn({ onClick, children, danger, primary }) {
   return (
     <button onClick={onClick} style={{
-      padding: '3px 10px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
-      background: primary ? '#4f46e5' : danger ? '#dc262618' : 'transparent',
-      color: primary ? '#fff' : danger ? '#dc2626' : '#7ca4c8',
-      border: primary ? 'none' : danger ? '1px solid #dc262640' : '1px solid #1e2e42',
+      padding: '3px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
+      background: primary ? COLORS.accent : danger ? COLORS.dangerSoft : COLORS.panel,
+      color: primary ? '#fff' : danger ? COLORS.danger : COLORS.textSecondary,
+      border: primary ? 'none' : danger ? 'none' : `1px solid ${COLORS.border}`,
     }}>
       {children}
     </button>

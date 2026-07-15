@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Modal from './Modal'
 import { STATUSES } from '../constants'
+import { COLORS, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../theme'
 
 const EMPTY = {
   title: '', company: '', location: '', url: '',
@@ -9,12 +10,8 @@ const EMPTY = {
 }
 
 const field = { marginBottom: 12 }
-const label = { display: 'block', fontSize: 11, color: '#7ca4c8', marginBottom: 4 }
-const input = {
-  width: '100%', padding: '6px 10px', background: '#060d16',
-  border: '1px solid #1e2e42', borderRadius: 5, color: '#e0f0ff',
-  fontSize: 13, fontFamily: 'inherit', outline: 'none',
-}
+const label = { display: 'block', fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }
+const input = { ...inputStyle, width: '100%' }
 
 export default function AddApplicationModal({ initial, resumes = [], onSave, onClose, isEdit }) {
   const [form, setForm] = useState({ ...EMPTY, ...initial })
@@ -78,10 +75,10 @@ export default function AddApplicationModal({ initial, resumes = [], onSave, onC
           <textarea style={{ ...input, height: 60, resize: 'vertical' }} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-          <button type="button" onClick={onClose} style={{ padding: '7px 16px', background: 'transparent', border: '1px solid #1e2e42', borderRadius: 5, color: '#7ca4c8', fontSize: 13 }}>
+          <button type="button" onClick={onClose} style={secondaryButtonStyle}>
             Cancel
           </button>
-          <button type="submit" style={{ padding: '7px 16px', background: '#4f46e5', border: 'none', borderRadius: 5, color: '#fff', fontSize: 13, fontWeight: 600 }}>
+          <button type="submit" style={primaryButtonStyle}>
             {isEdit ? 'Save' : 'Add'}
           </button>
         </div>

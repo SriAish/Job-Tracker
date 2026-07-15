@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { COLORS, cardStyle, inputStyle, primaryButtonStyle, sectionLabelStyle } from '../theme'
 
 function readAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -59,38 +60,36 @@ export default function Resumes({ resumes, onUpdate }) {
     setRenamingId(null)
   }
 
-  const inp = { padding: '6px 10px', background: '#060d16', border: '1px solid #1e2e42', borderRadius: 5, color: '#e0f0ff', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
-
   return (
     <div>
       {/* Upload */}
-      <div style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, padding: 16, marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: '#456', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+      <div style={{ ...cardStyle, padding: 16, marginBottom: 24 }}>
+        <div style={{ ...sectionLabelStyle, marginBottom: 12 }}>
           Upload Resume
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ flex: '1 1 200px' }}>
-            <div style={{ fontSize: 11, color: '#7ca4c8', marginBottom: 4 }}>Label</div>
+            <div style={{ fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }}>Label</div>
             <input
-              style={{ ...inp, width: '100%' }}
+              style={{ ...inputStyle, width: '100%' }}
               placeholder="e.g. PM Resume v2"
               value={name}
               onChange={e => setName(e.target.value)}
             />
           </div>
           <div style={{ flex: '1 1 200px' }}>
-            <div style={{ fontSize: 11, color: '#7ca4c8', marginBottom: 4 }}>File (PDF, DOC, DOCX)</div>
+            <div style={{ fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }}>File (PDF, DOC, DOCX)</div>
             <input
               ref={fileRef}
               type="file"
               accept=".pdf,.doc,.docx"
-              style={{ ...inp, width: '100%', cursor: 'pointer' }}
+              style={{ ...inputStyle, width: '100%', cursor: 'pointer' }}
             />
           </div>
           <button
             onClick={handleUpload}
             disabled={uploading || !name.trim()}
-            style={{ padding: '6px 18px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+            style={{ ...primaryButtonStyle, flexShrink: 0, opacity: name.trim() ? 1 : 0.6 }}
           >
             {uploading ? 'Uploading…' : 'Upload'}
           </button>
@@ -99,31 +98,31 @@ export default function Resumes({ resumes, onUpdate }) {
 
       {/* List */}
       {resumes.length === 0 && (
-        <div style={{ color: '#456', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No resumes uploaded yet.</div>
+        <div style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No resumes uploaded yet.</div>
       )}
 
       {resumes.map(r => (
-        <div key={r.id} style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, padding: '10px 14px', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div key={r.id} style={{ ...cardStyle, padding: '10px 14px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {renamingId === r.id ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <input
-                  style={{ ...inp, fontSize: 13 }}
+                  style={{ ...inputStyle, fontSize: 13 }}
                   value={renameVal}
                   onChange={e => setRenameVal(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') saveRename(r.id); if (e.key === 'Escape') setRenamingId(null) }}
                   autoFocus
                 />
-                <button onClick={() => saveRename(r.id)} style={{ padding: '4px 10px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12 }}>Save</button>
-                <button onClick={() => setRenamingId(null)} style={{ padding: '4px 10px', background: 'transparent', color: '#7ca4c8', border: '1px solid #1e2e42', borderRadius: 4, fontSize: 12 }}>Cancel</button>
+                <button onClick={() => saveRename(r.id)} style={{ padding: '4px 10px', background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12 }}>Save</button>
+                <button onClick={() => setRenamingId(null)} style={{ padding: '4px 10px', background: COLORS.panel, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12 }}>Cancel</button>
               </div>
             ) : (
               <>
-                <span style={{ color: '#e0f0ff', fontSize: 13, fontWeight: 500 }}>{r.name}</span>
-                <span style={{ color: '#456', fontSize: 11, marginLeft: 8 }}>{r.fileName}</span>
+                <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 500 }}>{r.name}</span>
+                <span style={{ color: COLORS.textMuted, fontSize: 11, marginLeft: 8 }}>{r.fileName}</span>
               </>
             )}
-            <div style={{ fontSize: 11, color: '#456', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
               {new Date(r.uploadedAt).toLocaleDateString()}
             </div>
           </div>
@@ -143,10 +142,10 @@ export default function Resumes({ resumes, onUpdate }) {
 function SmBtn({ onClick, children, danger }) {
   return (
     <button onClick={onClick} style={{
-      padding: '3px 10px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
-      background: danger ? '#dc262618' : 'transparent',
-      color: danger ? '#dc2626' : '#7ca4c8',
-      border: danger ? '1px solid #dc262640' : '1px solid #1e2e42',
+      padding: '3px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
+      background: danger ? COLORS.dangerSoft : COLORS.panel,
+      color: danger ? COLORS.danger : COLORS.textSecondary,
+      border: danger ? 'none' : `1px solid ${COLORS.border}`,
     }}>
       {children}
     </button>

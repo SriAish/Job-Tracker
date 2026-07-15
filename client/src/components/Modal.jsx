@@ -1,10 +1,12 @@
+import { COLORS } from '../theme'
+
 export default function Modal({ title, onClose, children, wide }) {
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'rgba(15,23,42,0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 100,
       }}
@@ -12,21 +14,22 @@ export default function Modal({ title, onClose, children, wide }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: '#0d1520',
-          border: '1px solid #1e2e42',
-          borderRadius: 8,
+          background: COLORS.panel,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 10,
           padding: '20px 24px',
           width: '90%',
           maxWidth: wide ? 700 : 540,
           maxHeight: '88vh',
           overflowY: 'auto',
+          boxShadow: '0 8px 24px rgba(15,23,42,0.12)',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <span style={{ color: '#e0f0ff', fontWeight: 600, fontSize: 14 }}>{title}</span>
+          <span style={{ color: COLORS.text, fontWeight: 600, fontSize: 14 }}>{title}</span>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#456', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
           >
             ×
           </button>

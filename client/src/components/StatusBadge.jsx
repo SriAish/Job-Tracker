@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { STATUSES, STATUS_MAP } from '../constants'
+import { STATUSES, STATUS_MAP, STATUS_BG_MAP } from '../constants'
+import { COLORS } from '../theme'
 
 export default function StatusBadge({ status, onChange }) {
   const [open, setOpen] = useState(false)
@@ -14,7 +15,8 @@ export default function StatusBadge({ status, onChange }) {
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
-  const color = STATUS_MAP[status] ?? '#456'
+  const color = STATUS_MAP[status] ?? COLORS.textSecondary
+  const bg = STATUS_BG_MAP[status] ?? COLORS.border
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -26,9 +28,8 @@ export default function StatusBadge({ status, onChange }) {
           borderRadius: 9999,
           fontSize: 11,
           fontWeight: 600,
-          background: color + '28',
+          background: bg,
           color,
-          border: `1px solid ${color}55`,
           cursor: onChange ? 'pointer' : 'default',
           userSelect: 'none',
           whiteSpace: 'nowrap',
@@ -41,13 +42,13 @@ export default function StatusBadge({ status, onChange }) {
           position: 'absolute',
           top: 'calc(100% + 4px)',
           left: 0,
-          background: '#0d1520',
-          border: '1px solid #1e2e42',
-          borderRadius: 6,
+          background: COLORS.panel,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 8,
           zIndex: 50,
           minWidth: 130,
           overflow: 'hidden',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          boxShadow: '0 4px 16px rgba(15,23,42,0.12)',
         }}>
           {STATUSES.map(s => (
             <div
@@ -58,10 +59,10 @@ export default function StatusBadge({ status, onChange }) {
                 fontSize: 12,
                 color: s.color,
                 cursor: 'pointer',
-                background: status === s.value ? s.color + '22' : 'transparent',
+                background: status === s.value ? s.bg : 'transparent',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = s.color + '22'}
-              onMouseLeave={e => e.currentTarget.style.background = status === s.value ? s.color + '22' : 'transparent'}
+              onMouseEnter={e => e.currentTarget.style.background = s.bg}
+              onMouseLeave={e => e.currentTarget.style.background = status === s.value ? s.bg : 'transparent'}
             >
               {s.value}
             </div>

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { storage } from './storage'
 import FindJobs from './tabs/FindJobs'
+import Browse from './tabs/Browse'
 import Applications from './tabs/Applications'
 import Resumes from './tabs/Resumes'
 import Settings from './tabs/Settings'
+import { COLORS } from './theme'
 
-const TABS = ['Find Jobs', 'Applications', 'Resumes', 'Settings']
+const TABS = ['Find Jobs', 'Browse', 'Applications', 'Resumes', 'Settings']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Find Jobs')
@@ -28,21 +30,25 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <nav style={{ display: 'flex', gap: 4, padding: '10px 20px', borderBottom: '1px solid #1e2e42', background: '#080e1a', position: 'sticky', top: 0, zIndex: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: COLORS.bg }}>
+      <nav style={{
+        display: 'flex', gap: 4, padding: '0 20px', background: COLORS.panel,
+        borderBottom: `1px solid ${COLORS.border}`, position: 'sticky', top: 0, zIndex: 10,
+      }}>
         {TABS.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '6px 16px',
-              background: activeTab === tab ? '#1a2f5e' : 'transparent',
-              color: activeTab === tab ? '#e0f0ff' : '#7ca4c8',
-              border: activeTab === tab ? '1px solid #2a4a8e' : '1px solid transparent',
-              borderRadius: 5,
+              padding: '14px 4px',
+              margin: '0 12px',
+              background: 'transparent',
+              color: activeTab === tab ? COLORS.text : COLORS.textSecondary,
+              border: 'none',
+              borderBottom: activeTab === tab ? `2px solid ${COLORS.accent}` : '2px solid transparent',
               cursor: 'pointer',
               fontSize: 13,
-              fontWeight: activeTab === tab ? 600 : 400,
+              fontWeight: activeTab === tab ? 600 : 500,
             }}
           >
             {tab}
@@ -54,6 +60,7 @@ export default function App() {
         {activeTab === 'Find Jobs' && (
           <FindJobs applications={applications} resumes={resumes} onAddApplication={addApplication} />
         )}
+        {activeTab === 'Browse' && <Browse />}
         {activeTab === 'Applications' && (
           <Applications applications={applications} resumes={resumes} onUpdate={updateApplications} />
         )}

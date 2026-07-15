@@ -10,15 +10,16 @@ export const ROLE_KEYWORDS = [
 ]
 
 export const STATUSES = [
-  { value: 'Not Applied', color: '#4a6080' },
-  { value: 'Applied',     color: '#16a34a' },
-  { value: 'Interviewing',color: '#d97706' },
-  { value: 'Offer',       color: '#7c3aed' },
-  { value: 'Rejected',    color: '#dc2626' },
-  { value: 'Withdrawn',   color: '#6b7280' },
+  { value: 'Not Applied', color: '#64748b', bg: '#f1f5f9' },
+  { value: 'Applied',     color: '#16a34a', bg: '#dcfce7' },
+  { value: 'Interviewing',color: '#ca8a04', bg: '#fef9c3' },
+  { value: 'Offer',       color: '#7c3aed', bg: '#ede9fe' },
+  { value: 'Rejected',    color: '#dc2626', bg: '#fee2e2' },
+  { value: 'Withdrawn',   color: '#64748b', bg: '#f1f5f9' },
 ]
 
 export const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.value, s.color]))
+export const STATUS_BG_MAP = Object.fromEntries(STATUSES.map(s => [s.value, s.bg]))
 
 export const COMPANY_PORTALS = [
   {

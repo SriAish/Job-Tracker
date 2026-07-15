@@ -5,9 +5,9 @@
 }
 
 body {
-  background: #080e1a;
-  color: #e0f0ff;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #f8f9fc;
+  color: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
@@ -20,10 +20,10 @@ body {
 }
 
 input, textarea, select {
-  background: #060d16;
-  border: 1px solid #1e2e42;
-  border-radius: 5px;
-  color: #e0f0ff;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #0f172a;
   font-family: inherit;
   font-size: 13px;
   outline: none;
@@ -34,7 +34,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 select option {
-  background: #0d1520;
+  background: #ffffff;
 }
 
 button {
@@ -43,7 +43,7 @@ button {
 }
 
 a {
-  color: #818cf8;
+  color: #4f46e5;
   text-decoration: none;
 }
 
@@ -52,5 +52,5 @@ a:hover {
 }
 
 ::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #080e1a; }
-::-webkit-scrollbar-thumb { background: #1e2e42; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #f8f9fc; }
+::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }

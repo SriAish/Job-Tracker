@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { storage, DEFAULT_COMPANIES, DEFAULT_ASHBY_COMPANIES, DEFAULT_LEVER_COMPANIES } from '../storage'
+import { COLORS, cardStyle, inputStyle, primaryButtonStyle, secondaryButtonStyle, sectionLabelStyle } from '../theme'
 
-const inp = { padding: '6px 10px', background: '#060d16', border: '1px solid #1e2e42', borderRadius: 5, color: '#e0f0ff', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
-const label = { fontSize: 11, color: '#7ca4c8', display: 'block', marginBottom: 4 }
+const inp = { ...inputStyle }
+const label = { fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }
 
 function SectionHead({ children }) {
   return (
-    <div style={{ fontSize: 10, color: '#456', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, marginTop: 28 }}>
+    <div style={{ ...sectionLabelStyle, marginBottom: 12, marginTop: 28 }}>
       {children}
     </div>
   )
@@ -137,24 +138,24 @@ export default function Settings({ applications }) {
   return (
     <div style={{ maxWidth: 620 }}>
       {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#4f46e5', color: '#fff', padding: '10px 18px', borderRadius: 6, fontSize: 13, zIndex: 200 }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: COLORS.accent, color: '#fff', padding: '10px 18px', borderRadius: 8, fontSize: 13, zIndex: 200, boxShadow: '0 4px 16px rgba(15,23,42,0.15)' }}>
           {toast}
         </div>
       )}
 
       {/* Companies */}
       <SectionHead>Greenhouse Companies</SectionHead>
-      <div style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #111e2e', background: '#0a1020' }}>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>SLUG</span>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>NAME</span>
+      <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>SLUG</span>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>NAME</span>
           <span />
         </div>
         {companies.map(c => (
-          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #0d1928', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: '#7ca4c8', fontFamily: 'monospace' }}>{c.slug}</span>
-            <span style={{ fontSize: 12, color: '#e0f0ff' }}>{c.name}</span>
-            <button onClick={() => removeCompany(c.slug)} style={{ padding: '2px 8px', background: '#dc262618', color: '#dc2626', border: '1px solid #dc262440', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>
+          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: COLORS.textSecondary, fontFamily: 'monospace' }}>{c.slug}</span>
+            <span style={{ fontSize: 12, color: COLORS.text }}>{c.name}</span>
+            <button onClick={() => removeCompany(c.slug)} style={{ padding: '2px 8px', background: COLORS.dangerSoft, color: COLORS.danger, border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>
               ×
             </button>
           </div>
@@ -162,62 +163,62 @@ export default function Settings({ applications }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '8px 12px', gap: 8, alignItems: 'center' }}>
           <input style={{ ...inp, fontSize: 12 }} value={newSlug} onChange={e => setNewSlug(e.target.value)} placeholder="slug" onKeyDown={e => e.key === 'Enter' && addCompany()} />
           <input style={{ ...inp, fontSize: 12 }} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Display name" onKeyDown={e => e.key === 'Enter' && addCompany()} />
-          <button onClick={addCompany} style={{ padding: '5px 12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>
+          <button onClick={addCompany} style={{ padding: '5px 12px', background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
             Add
           </button>
         </div>
       </div>
-      <button onClick={resetCompanies} style={{ fontSize: 12, color: '#456', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+      <button onClick={resetCompanies} style={{ fontSize: 12, color: COLORS.textMuted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
         Reset to defaults
       </button>
 
       {/* Ashby Companies */}
       <SectionHead>Ashby Companies</SectionHead>
-      <div style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #111e2e', background: '#0a1020' }}>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>SLUG</span>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>NAME</span>
+      <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>SLUG</span>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>NAME</span>
           <span />
         </div>
         {ashbyCompanies.map(c => (
-          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #0d1928', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: '#7ca4c8', fontFamily: 'monospace' }}>{c.slug}</span>
-            <span style={{ fontSize: 12, color: '#e0f0ff' }}>{c.name}</span>
-            <button onClick={() => removeAshbyCompany(c.slug)} style={{ padding: '2px 8px', background: '#dc262618', color: '#dc2626', border: '1px solid #dc262440', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>×</button>
+          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: COLORS.textSecondary, fontFamily: 'monospace' }}>{c.slug}</span>
+            <span style={{ fontSize: 12, color: COLORS.text }}>{c.name}</span>
+            <button onClick={() => removeAshbyCompany(c.slug)} style={{ padding: '2px 8px', background: COLORS.dangerSoft, color: COLORS.danger, border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>×</button>
           </div>
         ))}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '8px 12px', gap: 8, alignItems: 'center' }}>
           <input style={{ ...inp, fontSize: 12 }} value={newAshbySlug} onChange={e => setNewAshbySlug(e.target.value)} placeholder="slug" onKeyDown={e => e.key === 'Enter' && addAshbyCompany()} />
           <input style={{ ...inp, fontSize: 12 }} value={newAshbyName} onChange={e => setNewAshbyName(e.target.value)} placeholder="Display name" onKeyDown={e => e.key === 'Enter' && addAshbyCompany()} />
-          <button onClick={addAshbyCompany} style={{ padding: '5px 12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>Add</button>
+          <button onClick={addAshbyCompany} style={{ padding: '5px 12px', background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Add</button>
         </div>
       </div>
-      <button onClick={resetAshbyCompanies} style={{ fontSize: 12, color: '#456', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+      <button onClick={resetAshbyCompanies} style={{ fontSize: 12, color: COLORS.textMuted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
         Reset to defaults
       </button>
 
       {/* Lever Companies */}
       <SectionHead>Lever Companies</SectionHead>
-      <div style={{ background: '#0d1520', border: '1px solid #1e2e42', borderRadius: 6, overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #111e2e', background: '#0a1020' }}>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>SLUG</span>
-          <span style={{ fontSize: 11, color: '#456', fontWeight: 700 }}>NAME</span>
+      <div style={{ ...cardStyle, overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>SLUG</span>
+          <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 700 }}>NAME</span>
           <span />
         </div>
         {leverCompanies.map(c => (
-          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: '1px solid #0d1928', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: '#7ca4c8', fontFamily: 'monospace' }}>{c.slug}</span>
-            <span style={{ fontSize: 12, color: '#e0f0ff' }}>{c.name}</span>
-            <button onClick={() => removeLeverCompany(c.slug)} style={{ padding: '2px 8px', background: '#dc262618', color: '#dc2626', border: '1px solid #dc262440', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}>×</button>
+          <div key={c.slug} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: COLORS.textSecondary, fontFamily: 'monospace' }}>{c.slug}</span>
+            <span style={{ fontSize: 12, color: COLORS.text }}>{c.name}</span>
+            <button onClick={() => removeLeverCompany(c.slug)} style={{ padding: '2px 8px', background: COLORS.dangerSoft, color: COLORS.danger, border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>×</button>
           </div>
         ))}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', padding: '8px 12px', gap: 8, alignItems: 'center' }}>
           <input style={{ ...inp, fontSize: 12 }} value={newLeverSlug} onChange={e => setNewLeverSlug(e.target.value)} placeholder="slug" onKeyDown={e => e.key === 'Enter' && addLeverCompany()} />
           <input style={{ ...inp, fontSize: 12 }} value={newLeverName} onChange={e => setNewLeverName(e.target.value)} placeholder="Display name" onKeyDown={e => e.key === 'Enter' && addLeverCompany()} />
-          <button onClick={addLeverCompany} style={{ padding: '5px 12px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>Add</button>
+          <button onClick={addLeverCompany} style={{ padding: '5px 12px', background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600 }}>Add</button>
         </div>
       </div>
-      <button onClick={resetLeverCompanies} style={{ fontSize: 12, color: '#456', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+      <button onClick={resetLeverCompanies} style={{ fontSize: 12, color: COLORS.textMuted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
         Reset to defaults
       </button>
 
@@ -235,18 +236,18 @@ export default function Settings({ applications }) {
         <div>
           <label style={label}>Gmail App Password</label>
           <input style={{ ...inp, width: '100%' }} type="password" value={emailCfg.gmailAppPassword} onChange={e => setEmailCfg(c => ({ ...c, gmailAppPassword: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
-          <div style={{ fontSize: 11, color: '#456', marginTop: 4 }}>
-            Get App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8' }}>myaccount.google.com/apppasswords</a>
+          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
+            Get App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.accent }}>myaccount.google.com/apppasswords</a>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={saveEmail} style={{ padding: '7px 18px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600 }}>
+          <button onClick={saveEmail} style={primaryButtonStyle}>
             Save
           </button>
-          <button onClick={sendTestDigest} style={{ padding: '7px 18px', background: 'transparent', color: '#7ca4c8', border: '1px solid #1e2e42', borderRadius: 5, fontSize: 13 }}>
+          <button onClick={sendTestDigest} style={secondaryButtonStyle}>
             Send Test Digest
           </button>
-          {digestStatus && <span style={{ fontSize: 12, color: digestStatus.startsWith('Error') ? '#dc2626' : '#4ade80' }}>{digestStatus}</span>}
+          {digestStatus && <span style={{ fontSize: 12, color: digestStatus.startsWith('Error') ? COLORS.danger : '#16a34a' }}>{digestStatus}</span>}
         </div>
       </div>
     </div>
