@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { storage, DEFAULT_COMPANIES, DEFAULT_ASHBY_COMPANIES, DEFAULT_LEVER_COMPANIES } from '../storage'
-import { COLORS, cardStyle, inputStyle, primaryButtonStyle, secondaryButtonStyle, sectionLabelStyle } from '../theme'
+import { COLORS, cardStyle, inputStyle, sectionLabelStyle } from '../theme'
 
 const inp = { ...inputStyle }
-const label = { fontSize: 11, color: COLORS.textSecondary, display: 'block', marginBottom: 4 }
 
 function SectionHead({ children }) {
   return (
@@ -23,16 +22,12 @@ export default function Settings({ applications }) {
   const [leverCompanies, setLeverCompanies] = useState([])
   const [newLeverSlug, setNewLeverSlug] = useState('')
   const [newLeverName, setNewLeverName] = useState('')
-  const [emailCfg, setEmailCfg] = useState({ gmailUser: '', gmailAppPassword: '', emailTo: '' })
   const [toast, setToast] = useState('')
-  const [digestStatus, setDigestStatus] = useState('')
 
   useEffect(() => {
     setCompanies(storage.getCompanies())
     setAshbyCompanies(storage.getAshbyCompanies())
     setLeverCompanies(storage.getLeverCompanies())
-    const cfg = storage.getEmailConfig()
-    setEmailCfg({ gmailUser: cfg.gmailUser ?? '', gmailAppPassword: cfg.gmailAppPassword ?? '', emailTo: cfg.emailTo ?? '' })
   }, [])
 
   function showToast(msg) {
@@ -101,38 +96,6 @@ export default function Settings({ applications }) {
     setLeverCompanies(DEFAULT_LEVER_COMPANIES)
     storage.saveLeverCompanies(DEFAULT_LEVER_COMPANIES)
     showToast('Lever list reset to defaults.')
-  }
-
-  async function saveEmail() {
-    storage.saveEmailConfig(emailCfg)
-    try {
-      const res = await fetch('/api/save-email-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailCfg),
-      })
-      const data = await res.json()
-      showToast(data.ok ? 'Email settings saved.' : `Error: ${data.error}`)
-    } catch {
-      showToast('Saved to browser (server write failed — ok for Vercel deployments).')
-    }
-  }
-
-  async function sendTestDigest() {
-    setDigestStatus('Sending…')
-    const recent = [...applications].sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0)).slice(0, 5)
-    try {
-      const res = await fetch('/api/send-digest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobs: recent, config: { subject: 'Job Tracker — Test Digest' } }),
-      })
-      const data = await res.json()
-      setDigestStatus(data.ok ? 'Sent!' : `Error: ${data.error}`)
-    } catch (e) {
-      setDigestStatus(`Error: ${e.message}`)
-    }
-    setTimeout(() => setDigestStatus(''), 4000)
   }
 
   return (
@@ -221,35 +184,6 @@ export default function Settings({ applications }) {
       <button onClick={resetLeverCompanies} style={{ fontSize: 12, color: COLORS.textMuted, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
         Reset to defaults
       </button>
-
-      {/* Email */}
-      <SectionHead>Email / Digest Settings</SectionHead>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div>
-          <label style={label}>From (Gmail address)</label>
-          <input style={{ ...inp, width: '100%' }} value={emailCfg.gmailUser} onChange={e => setEmailCfg(c => ({ ...c, gmailUser: e.target.value }))} placeholder="you@gmail.com" />
-        </div>
-        <div>
-          <label style={label}>To (recipient address)</label>
-          <input style={{ ...inp, width: '100%' }} value={emailCfg.emailTo} onChange={e => setEmailCfg(c => ({ ...c, emailTo: e.target.value }))} placeholder="you@gmail.com" />
-        </div>
-        <div>
-          <label style={label}>Gmail App Password</label>
-          <input style={{ ...inp, width: '100%' }} type="password" value={emailCfg.gmailAppPassword} onChange={e => setEmailCfg(c => ({ ...c, gmailAppPassword: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
-          <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 4 }}>
-            Get App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.accent }}>myaccount.google.com/apppasswords</a>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={saveEmail} style={primaryButtonStyle}>
-            Save
-          </button>
-          <button onClick={sendTestDigest} style={secondaryButtonStyle}>
-            Send Test Digest
-          </button>
-          {digestStatus && <span style={{ fontSize: 12, color: digestStatus.startsWith('Error') ? COLORS.danger : '#16a34a' }}>{digestStatus}</span>}
-        </div>
-      </div>
     </div>
   )
 }

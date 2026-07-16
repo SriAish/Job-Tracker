@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { storage } from './storage'
 import FindJobs from './tabs/FindJobs'
 import Browse from './tabs/Browse'
@@ -13,6 +13,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('Find Jobs')
   const [applications, setApplications] = useState(() => storage.getApplications())
   const [resumes, setResumes] = useState(() => storage.getResumes())
+
+  // Migration: email moved to laptop-only cron; drop the stale browser-stored config.
+  useEffect(() => {
+    localStorage.removeItem('jt_email_config')
+  }, [])
 
   function updateApplications(apps) {
     setApplications(apps)

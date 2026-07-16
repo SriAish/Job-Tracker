@@ -4,7 +4,6 @@ const KEYS = {
   companies:       'jt_companies',
   ashbyCompanies:  'jt_ashby_companies',
   leverCompanies:  'jt_lever_companies',
-  emailConfig:     'jt_email_config',
 }
 
 export const DEFAULT_COMPANIES = [
@@ -142,6 +141,4 @@ export const storage = {
   saveAshbyCompanies:  (v) => write(KEYS.ashbyCompanies, v),
   getLeverCompanies:   () => read(KEYS.leverCompanies)  ?? DEFAULT_LEVER_COMPANIES,
   saveLeverCompanies:  (v) => write(KEYS.leverCompanies, v),
-  getEmailConfig:      () => read(KEYS.emailConfig)     ?? {},
-  saveEmailConfig:     (v) => write(KEYS.emailConfig, v),
 }
