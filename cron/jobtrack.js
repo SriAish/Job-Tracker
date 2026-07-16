@@ -1,10 +1,12 @@
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') })
+import 'dotenv/config'
 
-const fs = require('fs')
-const path = require('path')
-const nodemailer = require('nodemailer')
-const config = require('./config')
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import nodemailer from 'nodemailer'
+import config from './config.js'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SEEN_FILE = path.join(__dirname, '.seen-jobs.json')
 
 function loadSeen() {

@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const appId  = process.env.ADZUNA_APP_ID
   const appKey = process.env.ADZUNA_APP_KEY
 

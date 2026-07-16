@@ -2,11 +2,13 @@
   "name": "job-tracker",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "cd client && npm run dev",
     "vercel-dev": "vercel dev"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "nodemailer": "^6.9.16"
   },
   "devDependencies": {

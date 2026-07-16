@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const { greenhouse = [], ashby = [], lever = [], keywords = [] } = req.body ?? {}
