@@ -1,35 +1,12 @@
 import { useState, useCallback, useEffect } from 'react'
-import { storage } from '../storage'
-import { ROLE_KEYWORDS } from '../constants'
 import AddApplicationModal from '../components/AddApplicationModal'
+import BoardsFailureBanner from '../components/BoardsFailureBanner'
 import { COLORS, cardStyle, primaryButtonStyle } from '../theme'
-
-const STATE_RE = /[,\s](al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc)(\s*[,;]|\s*$)/i
-const US_STATE_NAME_RE = /,\s*(alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)(\s*,|\s*$)/i
-const US_CITY_RE = /\b(san francisco|new york|chicago|seattle|boston|austin|denver|atlanta|miami|portland|dallas|houston|phoenix|san jose|san diego|washington|philadelphia|minneapolis|detroit|nashville|charlotte|las vegas|pittsburgh|raleigh|los angeles|brooklyn|silicon valley|bay area|sfo|nyc)\b/i
-
-function isUS(location) {
-  if (!location || location.trim() === '') return true
-  const loc = location.toLowerCase()
-  if (loc.includes('united states') || /\busa\b/.test(loc)) return true
-  if (/\bus\b/.test(loc)) return true
-  if (loc.startsWith('us-') || /[,;\s]us-/.test(loc)) return true
-  if (STATE_RE.test(location)) return true
-  if (US_STATE_NAME_RE.test(location)) return true                // "San Francisco, California"
-  if (US_CITY_RE.test(location)) return true
-  if (/^remote(\s*[\-–(].*)?$/i.test(location.trim())) return true
-  return false
-}
-
-function extractMaxYears(text) {
-  const re = /(\d+)\s*(?:\+?\s*[-–to]+\s*(\d+))?\s*\+?\s*years?/gi
-  let max = 0, found = false
-  for (const m of text.matchAll(re)) {
-    const a = parseInt(m[1]), b = m[2] ? parseInt(m[2]) : a
-    if (a >= 1 && a <= 30) { max = Math.max(max, a, b); found = true }
-  }
-  return found ? max : null
-}
+import { isUS, extractMaxYears, withinHours } from '@shared/filters.js'
+import { mergeJobs } from '@shared/merge.js'
+import { ROLE_KEYWORDS, ADZUNA_KEYWORD_TERMS } from '@shared/constants.js'
+import { normalizeAdzuna } from '@shared/normalize.js'
+import { ashby as ashbyCompanies } from '@shared/companies.js'
 
 function matchesKeywords(text) {
   const lower = text.toLowerCase()
@@ -37,30 +14,8 @@ function matchesKeywords(text) {
 }
 
 // ── Adzuna ────────────────────────────────────────────────────────────────────
-
-// area = ["US", "Maryland", "Montgomery County", "Rockville"]
-// Build "City, State" so isUS() state-name regex matches correctly.
-function adzunaLocation(job) {
-  const area = job.location?.area ?? []
-  const state = area[1] ?? ''
-  const city  = area[3] ?? area[2] ?? ''
-  if (state) return city ? `${city}, ${state}` : state
-  return job.location?.display_name ?? ''
-}
-
-function normalizeAdzuna(job) {
-  return {
-    id: `az-${job.id}`,
-    title: job.title ?? '',
-    company: job.company?.display_name ?? '',
-    location: adzunaLocation(job),
-    url: job.redirect_url ?? '',
-    source: 'adzuna',
-    precision: 'low',
-    description: job.description ?? '',
-    postedAt: job.created ?? '',
-  }
-}
+// Fetching stays client-side (own rate-limited proxy call); normalizing the
+// raw Adzuna job shape is shared logic, imported above.
 
 const _adzunaSleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -72,7 +27,7 @@ async function callAdzuna(params) {
   const res = await fetch(`/api/adzuna?${qs}`)
 
   if (res.status === 401 || res.status === 403) {
-    throw new Error(`Adzuna auth failure (${res.status}) — check ADZUNA_APP_ID / ADZUNA_APP_KEY`)
+    throw new Error(`Adzuna auth failure (${res.status}): check ADZUNA_APP_ID / ADZUNA_APP_KEY`)
   }
   if (!res.ok) {
     const d = await res.json().catch(() => ({}))
@@ -83,50 +38,37 @@ async function callAdzuna(params) {
   return data.results ?? []   // 200 + empty array is valid data, not an error
 }
 
-// Mode 2 only in the frontend — keyword discovery via title_only calls.
+// Mode 2 only in the frontend: keyword discovery via title_only calls.
 // Mode 1 (company backstop) is cron-only: too many calls for a UI search.
-const ADZUNA_MODE2_CALLS = [
-  { title_only: 'product manager' },
-  { title_only: 'ai agent' },
-  { title_only: 'venture capital' },
-  { title_only: 'chief of staff' },
-  { title_only: 'generative ai' },
-  { title_only: 'go-to-market' },
-  { title_only: 'program manager' },
-  { title_only: 'strategy' },
-]
-async function fetchAdzunaMode2(existingKeys, onProgress, maxDaysOld = 7) {
+async function fetchAdzunaMode2(onProgress, maxDaysOld = 7) {
   const common = { max_days_old: maxDaysOld, results_per_page: 50 }
   const results = []
-  for (let i = 0; i < ADZUNA_MODE2_CALLS.length; i++) {
-    const kw = ADZUNA_MODE2_CALLS[i]
-    const label = Object.values(kw)[0]
-    onProgress(`Adzuna: searching "${label}"…`)
+  for (let i = 0; i < ADZUNA_KEYWORD_TERMS.length; i++) {
+    const term = ADZUNA_KEYWORD_TERMS[i]
+    onProgress(`Adzuna: searching "${term}"…`)
     try {
-      const jobs = await callAdzuna({ ...common, ...kw })
+      const jobs = await callAdzuna({ ...common, title_only: term })
       const normalized = jobs
         .filter(j => matchesKeywords(j.title ?? ''))
         .map(normalizeAdzuna)
-        .filter(j => !existingKeys.has(`${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`))
       results.push(...normalized)
     } catch (e) {
-      console.warn(`Adzuna "${label}":`, e.message)
+      console.warn(`Adzuna "${term}":`, e.message)
     }
-    if (i < ADZUNA_MODE2_CALLS.length - 1) await _adzunaSleep(400)
+    if (i < ADZUNA_KEYWORD_TERMS.length - 1) await _adzunaSleep(400)
   }
   return results
 }
 
 // ── Greenhouse / Ashby / Lever (shared boards endpoint) ─────────────────────────
 
-async function fetchBoards({ greenhouse, ashby, lever }) {
+async function fetchBoards(sources) {
   const r = await fetch('/api/boards', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ greenhouse, ashby, lever, keywords: ROLE_KEYWORDS }),
+    body: JSON.stringify({ sources }),
   })
-  const data = await r.json()
-  return data.jobs ?? []
+  return r.json() // {jobs, errors}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,6 +79,10 @@ const SOURCE_PILLS = [
   { key: 'ashby',      label: 'Ashby' },
   { key: 'lever',      label: 'Lever' },
 ]
+
+function jobKey(job, i) {
+  return job.url || `${job.source}-${job.title}-${job.company}-${i}`
+}
 
 export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [sources, setSources] = useState({ greenhouse: true, adzuna: true, ashby: true, lever: true })
@@ -150,6 +96,8 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [status, setStatus] = useState('')
   const [expanded, setExpanded] = useState({})
   const [addModal, setAddModal] = useState(null)
+  const [boardErrors, setBoardErrors] = useState([])
+  const [requestedAshbySlugs, setRequestedAshbySlugs] = useState([])
 
   const noSourceActive = !sources.greenhouse && !sources.adzuna && !sources.ashby && !sources.lever
 
@@ -168,28 +116,22 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   }
 
   // Re-apply display filters instantly whenever rawJobs or any filter changes.
-  // No network calls — just in-memory filtering of the last fetch.
+  // No network calls; just in-memory filtering of the last fetch.
   useEffect(() => {
     if (!rawJobs.length) return
-    const cutoffMs = recency === '24h' ? Date.now() - 86400000
-      : recency === '48h' ? Date.now() - 172800000 : 0
-    const withinCutoff = (postedAt) => {
-      if (!cutoffMs || !postedAt) return true
-      const ts = new Date(postedAt).getTime()
-      return isNaN(ts) ? true : ts >= cutoffMs
-    }
-    const dated = rawJobs.filter(j => withinCutoff(j.postedAt))
-    let result = usOnly ? dated.filter(j => isUS(j.location)) : dated
+    const hours = recency === '24h' ? 24 : recency === '48h' ? 48 : 0
+    const dated = rawJobs.filter(j => withinHours(j, hours))
+    let result = usOnly ? dated.filter(j => isUS(j)) : dated
     let expDropped = 0
     if (expFilter) {
       const before = result.length
       result = result.filter(j => {
-        const yrs = extractMaxYears(j.description)
+        const yrs = extractMaxYears(j)
         return yrs === null || yrs <= maxYears
       })
       expDropped = before - result.length
     }
-    const nonUS = dated.length - (usOnly ? dated.filter(j => isUS(j.location)).length : dated.length)
+    const nonUS = dated.length - (usOnly ? dated.filter(j => isUS(j)).length : dated.length)
     const parts = [`${result.length} results`]
     if (recency !== 'any') parts.push(`last ${recency}`)
     if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
@@ -203,51 +145,43 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     setStatus('')
     setJobs([])
     setRawJobs([])
+    setBoardErrors([])
+    setRequestedAshbySlugs([])
 
     const adzunaMaxDaysOld = recency === '24h' ? 1 : recency === '48h' ? 2 : 7
 
-    const activeBoards = [
-      sources.greenhouse && 'Greenhouse',
-      sources.ashby && 'Ashby',
-      sources.lever && 'Lever',
+    const activeBoardSources = [
+      sources.greenhouse && 'greenhouse',
+      sources.ashby && 'ashby',
+      sources.lever && 'lever',
     ].filter(Boolean)
-    if (activeBoards.length) setStatus(`Searching ${activeBoards.join(', ')}…`)
+    if (activeBoardSources.length) setStatus(`Searching ${activeBoardSources.join(', ')}…`)
+
+    const ashbySlugs = sources.ashby ? ashbyCompanies.map(c => c.slug) : []
+    setRequestedAshbySlugs(ashbySlugs)
 
     let boardJobs = []
-    if (activeBoards.length) {
-      boardJobs = await fetchBoards({
-        greenhouse: sources.greenhouse ? storage.getCompanies() : [],
-        ashby:      sources.ashby      ? storage.getAshbyCompanies() : [],
-        lever:      sources.lever      ? storage.getLeverCompanies() : [],
-      }).catch(e => { console.warn('boards fetch failed:', e.message); return [] })
+    if (activeBoardSources.length) {
+      const result = await fetchBoards(activeBoardSources)
+        .catch(e => { console.warn('boards fetch failed:', e.message); return { jobs: [], errors: [] } })
+      boardJobs = result.jobs ?? []
+      setBoardErrors(result.errors ?? [])
     }
 
-    // Dedup — greenhouse > ashby > lever (priority order)
-    const map = new Map()
-    for (const src of ['greenhouse', 'ashby', 'lever']) {
-      for (const j of boardJobs.filter(j => j.source === src)) {
-        const key = `${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`
-        if (!map.has(key)) map.set(key, j)
-      }
-    }
-
-    // Adzuna keyword discovery — serialized, runs after primary dedup
+    // Adzuna keyword discovery: serialized, runs after boards (unchanged sequencing)
+    let azJobs = []
     if (sources.adzuna) {
-      const azJobs = await fetchAdzunaMode2(new Set(map.keys()), setStatus, adzunaMaxDaysOld)
-      for (const j of azJobs) {
-        const key = `${j.title.toLowerCase().trim()}__${j.company.toLowerCase().trim()}`
-        if (!map.has(key)) map.set(key, j)
-      }
+      azJobs = await fetchAdzunaMode2(setStatus, adzunaMaxDaysOld)
     }
 
-    // Store full deduped set — useEffect above applies date/US/exp filters reactively
-    setRawJobs([...map.values()])
+    // Store full merged set; useEffect above applies date/US/exp filters reactively
+    setRawJobs(mergeJobs([boardJobs, azJobs]))
     setLoading(false)
   }
 
   return (
     <div>
-      {/* Row 1 — source pills + time filter + search */}
+      {/* Row 1: source pills + time filter + search */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         {SOURCE_PILLS.map(({ key, label }) => {
           const on = sources[key]
@@ -296,7 +230,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         </div>
       </div>
 
-      {/* Row 3 — secondary filters */}
+      {/* Row 3: secondary filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: usOnly ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
           <input
@@ -335,16 +269,18 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 12 }}>{status}</div>
       )}
 
+      <BoardsFailureBanner errors={boardErrors} requestedAshbySlugs={requestedAshbySlugs} />
+
       {/* Results */}
       {jobs.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          {jobs.map(job => (
+          {jobs.map((job, i) => (
             <JobCard
-              key={job.id}
+              key={jobKey(job, i)}
               job={job}
               tracked={isTracked(job)}
-              expanded={!!expanded[job.id]}
-              onToggle={() => setExpanded(e => ({ ...e, [job.id]: !e[job.id] }))}
+              expanded={!!expanded[jobKey(job, i)]}
+              onToggle={() => setExpanded(e => ({ ...e, [jobKey(job, i)]: !e[jobKey(job, i)] }))}
               onTrack={() => setAddModal(job)}
             />
           ))}
@@ -412,7 +348,7 @@ function JobCard({ job, tracked, expanded, onToggle, onTrack }) {
         <div style={{ padding: '8px 12px 10px 32px', color: COLORS.textSecondary, fontSize: 12, lineHeight: 1.65, borderTop: `1px solid ${COLORS.border}` }}>
           {isAZ && (
             <div style={{ fontSize: 11, color: '#ea580c', marginBottom: 6, fontStyle: 'italic' }}>
-              via Adzuna aggregator — verify on company site before applying
+              via Adzuna aggregator, verify on company site before applying
             </div>
           )}
           {job.description

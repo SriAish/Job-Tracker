@@ -15,8 +15,12 @@ export default function App() {
   const [resumes, setResumes] = useState(() => storage.getResumes())
 
   // Migration: email moved to laptop-only cron; drop the stale browser-stored config.
+  // Migration: company lists moved to shared/companies.js; drop the stale per-ATS lists.
   useEffect(() => {
     localStorage.removeItem('jt_email_config')
+    localStorage.removeItem('jt_companies')
+    localStorage.removeItem('jt_ashby_companies')
+    localStorage.removeItem('jt_lever_companies')
   }, [])
 
   function updateApplications(apps) {

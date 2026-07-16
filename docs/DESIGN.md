@@ -131,7 +131,7 @@ Export backup / restore from backup, with `lastExportedAt` shown. That is all. (
 | --- | --- | --- |
 | Greenhouse | `boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true` | Public API. `postedAt` maps from `updated_at`, which bumps on edits, so the time filter can occasionally resurface an edited old posting. |
 | Lever | `api.lever.co/v0/postings/{slug}?mode=json` | Public API |
-| Ashby | Fetch `jobs.ashbyhq.com/{slug}` HTML, brace-count parse `window.__appData` | Not an API; a scrape. Highest breakage risk. The parser lives in exactly one place: `shared/`. Parse failure is reported per slug, never swallowed. |
+| Ashby | Fetch `jobs.ashbyhq.com/{slug}` HTML, brace-count parse `window.__appData` | Not an API; a scrape. Highest breakage risk. The parser lives in exactly one place: `shared/`. Parse failure is reported per slug, never swallowed. nonexistent slugs return 200 with the marker, so slug rot is undetectable via the errors contract; only page-format changes trigger marker_missing.|
 | Adzuna | `api.adzuna.com` search API, server-side credentials | Self-paced 400ms between calls (about 2 req/sec limit). Daily budget guard in cron: 200 calls vs Adzuna's 250. |
 
 boards.js response contract:

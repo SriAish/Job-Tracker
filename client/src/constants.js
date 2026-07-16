@@ -1,14 +1,3 @@
-export const ROLE_KEYWORDS = [
-  'strategy', 'product manager', 'product management', 'operations',
-  'go-to-market', 'gtm', 'ai operations', 'ai strategy',
-  'business operations', 'corporate strategy', 'strategic',
-  'operations lead', 'operations manager', 'venture capital',
-  'corporate vc', 'corporate venture', 'investing', 'investment',
-  'portfolio', 'product lead', 'program manager', 'chief of staff',
-  'ai agent', 'agentic', 'agent operations', 'agent product',
-  'generative ai', 'gen ai', 'llm', 'foundation model',
-]
-
 export const STATUSES = [
   { value: 'Not Applied', color: '#64748b', bg: '#f1f5f9' },
   { value: 'Applied',     color: '#16a34a', bg: '#dcfce7' },
