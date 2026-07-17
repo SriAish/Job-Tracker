@@ -2,8 +2,37 @@
 // {title, company, location, url, postedAt, description, source}
 // postedAt is epoch milliseconds (or null if the source gave no usable date).
 
-function stripHtml(html) {
-  return (html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+// Greenhouse (and some Lever) description fields come back as entity-encoded
+// HTML, e.g. "&lt;h2&gt;Who we are&lt;/h2&gt;" rather than real "<h2>" tags.
+// Decode named/numeric entities first (iterating so double-encoded input
+// like "&amp;lt;" resolves too), then strip real tags, then collapse
+// whitespace left behind by both steps.
+const NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', nbsp: ' ' }
+const ENTITY_RE = /&(#[xX][0-9a-fA-F]+|#[0-9]+|amp|lt|gt|quot|nbsp);/g
+
+function decodeEntitiesOnce(str) {
+  return str.replace(ENTITY_RE, (match, entity) => {
+    if (entity[0] === '#') {
+      const isHex = entity[1] === 'x' || entity[1] === 'X'
+      const codePoint = isHex ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10)
+      return Number.isNaN(codePoint) ? match : String.fromCodePoint(codePoint)
+    }
+    return NAMED_ENTITIES[entity]
+  })
+}
+
+function decodeEntities(str) {
+  let current = str
+  for (let i = 0; i < 5; i++) {
+    const next = decodeEntitiesOnce(current)
+    if (next === current) break
+    current = next
+  }
+  return current
+}
+
+function decodeAndStripHtml(html) {
+  return decodeEntities(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function toEpochMs(value) {
@@ -20,7 +49,7 @@ export function normalizeGreenhouse(job, companyName) {
     location: job.location?.name ?? '',
     url: job.absolute_url ?? '',
     postedAt: toEpochMs(job.updated_at),
-    description: stripHtml(job.content),
+    description: decodeAndStripHtml(job.content),
     source: 'greenhouse',
   }
 }
@@ -32,7 +61,9 @@ export function normalizeLever(job, companyName) {
     location: job.categories?.location ?? '',
     url: job.hostedUrl ?? '',
     postedAt: toEpochMs(job.createdAt),
-    description: '',
+    description: job.descriptionPlain
+      ? decodeAndStripHtml(job.descriptionPlain)
+      : decodeAndStripHtml(job.description),
     source: 'lever',
   }
 }
