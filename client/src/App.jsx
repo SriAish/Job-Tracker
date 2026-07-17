@@ -33,6 +33,14 @@ export default function App() {
     }
   }, [])
 
+  // Retention: dismissed entries older than 90 days no longer serve their purpose; drop them.
+  useEffect(() => {
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000
+    const current = storage.getDismissed()
+    const pruned = current.filter(d => d.dismissedAt >= cutoff)
+    if (pruned.length !== current.length) storage.saveDismissed(pruned)
+  }, [])
+
   function updateApplications(apps) {
     setApplications(apps)
     storage.saveApplications(apps)

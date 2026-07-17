@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import AddApplicationModal from '../components/AddApplicationModal'
 import BoardsFailureBanner from '../components/BoardsFailureBanner'
+import { storage } from '../storage'
 import { COLORS, cardStyle, primaryButtonStyle } from '../theme'
 import { isUS, extractMaxYears, withinHours } from '@shared/filters.js'
 import { mergeJobs } from '@shared/merge.js'
@@ -98,6 +99,10 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [addModal, setAddModal] = useState(null)
   const [boardErrors, setBoardErrors] = useState([])
   const [requestedAshbySlugs, setRequestedAshbySlugs] = useState([])
+  const [dismissed, setDismissed] = useState(() => storage.getDismissed())
+  const [dismissedCount, setDismissedCount] = useState(0)
+  const [justDismissed, setJustDismissed] = useState({}) // url -> true, transient undo-row markers
+  const [showHidden, setShowHidden] = useState(false)
 
   const noSourceActive = !sources.greenhouse && !sources.adzuna && !sources.ashby && !sources.lever
 
@@ -115,8 +120,28 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     })
   }
 
+  function dismissJob(url) {
+    setDismissed(storage.addDismissed(url))
+    setJustDismissed(u => ({ ...u, [url]: true }))
+  }
+
+  function undoDismiss(url) {
+    setDismissed(storage.removeDismissed(url))
+    setJustDismissed(u => {
+      const next = { ...u }
+      delete next[url]
+      return next
+    })
+  }
+
+  function restoreJob(url) {
+    setDismissed(storage.removeDismissed(url))
+  }
+
   // Re-apply display filters instantly whenever rawJobs or any filter changes.
   // No network calls; just in-memory filtering of the last fetch.
+  // `jobs` keeps dismissed entries in place (ordered) so undo-row / show-hidden
+  // rendering can still find them; dismissedCount drives the summary line and toggle.
   useEffect(() => {
     if (!rawJobs.length) return
     const hours = recency === '24h' ? 24 : recency === '48h' ? 48 : 0
@@ -132,12 +157,22 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
       expDropped = before - result.length
     }
     const nonUS = dated.length - (usOnly ? dated.filter(j => isUS(j)).length : dated.length)
-    const parts = [`${result.length} results`]
+    const dismissedUrls = new Set(dismissed.map(d => d.url))
+    const dCount = result.filter(j => j.url && dismissedUrls.has(j.url)).length
+    const parts = [`${result.length - dCount} results`]
     if (recency !== 'any') parts.push(`last ${recency}`)
     if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
     if (expFilter && expDropped) parts.push(`${expDropped} over ${maxYears}yr exp hidden`)
+    if (dCount) parts.push(`${dCount} dismissed hidden`)
     setJobs(result)
+    setDismissedCount(dCount)
     setStatus(parts.join(' · '))
+  }, [rawJobs, recency, usOnly, expFilter, maxYears, dismissed])
+
+  // The undo row is only good "until the next search or filter change" -- clear it
+  // whenever the result set or any filter changes, but not when dismissed itself changes.
+  useEffect(() => {
+    setJustDismissed({})
   }, [rawJobs, recency, usOnly, expFilter, maxYears])
 
   async function handleSearch() {
@@ -260,6 +295,17 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
           />
           yrs exp
         </label>
+        {dismissedCount > 0 && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: showHidden ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={showHidden}
+              onChange={e => setShowHidden(e.target.checked)}
+              style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
+            />
+            Show hidden ({dismissedCount})
+          </label>
+        )}
       </div>
 
       {status && !loading && (
@@ -274,16 +320,27 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
       {/* Results */}
       {jobs.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          {jobs.map((job, i) => (
-            <JobCard
-              key={jobKey(job, i)}
-              job={job}
-              tracked={isTracked(job)}
-              expanded={!!expanded[jobKey(job, i)]}
-              onToggle={() => setExpanded(e => ({ ...e, [jobKey(job, i)]: !e[jobKey(job, i)] }))}
-              onTrack={() => setAddModal(job)}
-            />
-          ))}
+          {jobs.map((job, i) => {
+            const key = jobKey(job, i)
+            const isDismissed = !!job.url && dismissed.some(d => d.url === job.url)
+            if (isDismissed && justDismissed[job.url]) {
+              return <DismissedRow key={key} job={job} onUndo={() => undoDismiss(job.url)} />
+            }
+            if (isDismissed && !showHidden) return null
+            return (
+              <JobCard
+                key={key}
+                job={job}
+                tracked={isTracked(job)}
+                expanded={!!expanded[key]}
+                onToggle={() => setExpanded(e => ({ ...e, [key]: !e[key] }))}
+                onTrack={() => setAddModal(job)}
+                dismissed={isDismissed}
+                onDismiss={() => dismissJob(job.url)}
+                onRestore={() => restoreJob(job.url)}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -291,7 +348,13 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
         <AddApplicationModal
           initial={{ title: addModal.title, company: addModal.company, location: addModal.location, url: addModal.url, description: addModal.description, source: addModal.source }}
           resumes={resumes}
-          onSave={app => { onAddApplication(app); setAddModal(null) }}
+          onSave={app => {
+            onAddApplication(app)
+            // AddApplicationModal already wrote the auto-dismiss entry; resync so the
+            // card leaves the results with no undo row (justDismissed stays untouched).
+            setDismissed(storage.getDismissed())
+            setAddModal(null)
+          }}
           onClose={() => setAddModal(null)}
         />
       )}
@@ -299,14 +362,26 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   )
 }
 
-function JobCard({ job, tracked, expanded, onToggle, onTrack }) {
+function DismissedRow({ job, onUndo }) {
+  return (
+    <div style={{ ...cardStyle, marginBottom: 6, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ color: COLORS.textMuted, fontSize: 12 }}>Dismissed</span>
+      <span style={{ color: COLORS.textMuted, fontSize: 12 }}>·</span>
+      <button onClick={onUndo} style={{ background: 'none', border: 'none', color: COLORS.accent, fontSize: 12, cursor: 'pointer', padding: 0 }}>
+        Undo
+      </button>
+    </div>
+  )
+}
+
+function JobCard({ job, tracked, expanded, onToggle, onTrack, dismissed, onDismiss, onRestore }) {
   const date = job.postedAt ? new Date(job.postedAt).toLocaleDateString() : ''
   const isGH = job.source === 'greenhouse'
   const isLV = job.source === 'lever'
   const isAZ = job.source === 'adzuna'
 
   return (
-    <div style={{ ...cardStyle, marginBottom: 6 }}>
+    <div style={{ ...cardStyle, marginBottom: 6, opacity: dismissed ? 0.55 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px' }}>
         <button onClick={onToggle} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 9, padding: 0, flexShrink: 0, width: 12 }}>
           {expanded ? '▼' : '▶'}
@@ -341,6 +416,23 @@ function JobCard({ job, tracked, expanded, onToggle, onTrack }) {
             }}>
               + Track
             </button>
+          )}
+          {job.url && (
+            dismissed ? (
+              <button onClick={onRestore} style={{
+                padding: '2px 8px', background: COLORS.panel, color: COLORS.textSecondary,
+                border: `1px solid ${COLORS.border}`, borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              }}>
+                Restore
+              </button>
+            ) : (
+              <button onClick={onDismiss} style={{
+                padding: '2px 8px', background: COLORS.panel, color: COLORS.textMuted,
+                border: `1px solid ${COLORS.border}`, borderRadius: 4, fontSize: 11, cursor: 'pointer',
+              }}>
+                Dismiss
+              </button>
+            )
           )}
         </div>
       </div>

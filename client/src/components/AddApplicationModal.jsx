@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Modal from './Modal'
 import { STATUSES } from '../constants'
 import { COLORS, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../theme'
+import { storage } from '../storage'
 
 const EMPTY = {
   title: '', company: '', location: '', url: '',
@@ -21,6 +22,9 @@ export default function AddApplicationModal({ initial, resumes = [], onSave, onC
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim() || !form.company.trim()) return
+    // Auto-dismiss from Find Jobs: only on create, so re-saving an edit doesn't re-dismiss.
+    const url = form.url.trim()
+    if (!isEdit && url) storage.addDismissed(url)
     onSave(form)
   }
 
