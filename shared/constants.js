@@ -24,3 +24,6 @@ export const ADZUNA_KEYWORD_TERMS = [
   'program manager',
   'strategy',
 ]
+
+// Hard cap on Adzuna calls per process lifetime; Adzuna's own plan limit is 250.
+export const ADZUNA_DAILY_BUDGET = 200

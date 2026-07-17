@@ -1,48 +1,62 @@
 import { useState, useRef } from 'react'
-import { COLORS, cardStyle, inputStyle, primaryButtonStyle, sectionLabelStyle } from '../theme'
+import { COLORS, cardStyle, inputStyle, sectionLabelStyle } from '../theme'
 
-function readAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+function baseName(fileName) {
+  const idx = fileName.lastIndexOf('.')
+  return idx > 0 ? fileName.slice(0, idx) : fileName
+}
+
+function registerFiles(files, existingResumes) {
+  const existingNames = new Set(existingResumes.map(r => r.fileName))
+  const added = []
+  let skippedCount = 0
+  for (const file of files) {
+    const fileName = file.name || 'Untitled resume'
+    if (existingNames.has(fileName)) {
+      skippedCount += 1
+      continue
+    }
+    existingNames.add(fileName)
+    added.push({
+      id: crypto.randomUUID(),
+      name: file.name ? baseName(file.name) : 'Untitled resume',
+      fileName,
+      uploadedAt: new Date().toISOString(),
+    })
+  }
+  return { added, skippedCount }
+}
+
+function summarize(addedCount, skippedCount) {
+  const parts = [`${addedCount} added`]
+  if (skippedCount > 0) parts.push(`${skippedCount} already registered`)
+  return parts.join(', ')
 }
 
 export default function Resumes({ resumes, onUpdate }) {
-  const [name, setName] = useState('')
-  const [uploading, setUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [message, setMessage] = useState('')
   const [renamingId, setRenamingId] = useState(null)
   const [renameVal, setRenameVal] = useState('')
-  const fileRef = useRef(null)
+  const fileInputRef = useRef(null)
 
-  async function handleUpload() {
-    const file = fileRef.current?.files?.[0]
-    if (!file || !name.trim()) return
-    setUploading(true)
-    try {
-      const data = await readAsDataURL(file)
-      const resume = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        fileName: file.name,
-        data,
-        uploadedAt: new Date().toISOString(),
-      }
-      onUpdate([...resumes, resume])
-      setName('')
-      fileRef.current.value = ''
-    } finally {
-      setUploading(false)
-    }
+  function handleFiles(fileList) {
+    const files = Array.from(fileList)
+    if (files.length === 0) return
+    const { added, skippedCount } = registerFiles(files, resumes)
+    if (added.length > 0) onUpdate([...resumes, ...added])
+    setMessage(summarize(added.length, skippedCount))
   }
 
-  function download(resume) {
-    const a = document.createElement('a')
-    a.href = resume.data
-    a.download = resume.fileName
-    a.click()
+  function handleDrop(e) {
+    e.preventDefault()
+    setIsDragging(false)
+    handleFiles(e.dataTransfer.files)
+  }
+
+  function handleInputChange(e) {
+    handleFiles(e.target.files)
+    e.target.value = ''
   }
 
   function deleteResume(id) {
@@ -62,43 +76,46 @@ export default function Resumes({ resumes, onUpdate }) {
 
   return (
     <div>
-      {/* Upload */}
-      <div style={{ ...cardStyle, padding: 16, marginBottom: 24 }}>
-        <div style={{ ...sectionLabelStyle, marginBottom: 12 }}>
-          Upload Resume
+      {/* Registration */}
+      <div
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        style={{
+          ...cardStyle,
+          padding: 24,
+          marginBottom: message ? 8 : 24,
+          textAlign: 'center',
+          cursor: 'pointer',
+          borderStyle: 'dashed',
+          borderColor: isDragging ? COLORS.accent : COLORS.border,
+          background: isDragging ? COLORS.accentSoft : COLORS.panel,
+        }}
+      >
+        <div style={{ ...sectionLabelStyle, marginBottom: 8 }}>Register Resume</div>
+        <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>
+          Drag and drop files here, or click to browse
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 200px' }}>
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }}>Label</div>
-            <input
-              style={{ ...inputStyle, width: '100%' }}
-              placeholder="e.g. PM Resume v2"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-          </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <div style={{ fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }}>File (PDF, DOC, DOCX)</div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,.doc,.docx"
-              style={{ ...inputStyle, width: '100%', cursor: 'pointer' }}
-            />
-          </div>
-          <button
-            onClick={handleUpload}
-            disabled={uploading || !name.trim()}
-            style={{ ...primaryButtonStyle, flexShrink: 0, opacity: name.trim() ? 1 : 0.6 }}
-          >
-            {uploading ? 'Uploading…' : 'Upload'}
-          </button>
-        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleInputChange}
+        />
       </div>
+
+      {message && (
+        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 24, textAlign: 'center' }}>
+          {message}
+        </div>
+      )}
 
       {/* List */}
       {resumes.length === 0 && (
-        <div style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No resumes uploaded yet.</div>
+        <div style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No resumes registered yet.</div>
       )}
 
       {resumes.map(r => (
@@ -129,7 +146,6 @@ export default function Resumes({ resumes, onUpdate }) {
           {renamingId !== r.id && (
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
               <SmBtn onClick={() => startRename(r)}>Rename</SmBtn>
-              <SmBtn onClick={() => download(r)}>Download</SmBtn>
               <SmBtn danger onClick={() => deleteResume(r.id)}>Delete</SmBtn>
             </div>
           )}

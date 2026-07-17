@@ -1,40 +1,34 @@
+import { adzunaRequest } from '../shared/adzuna-core.js'
+
+// Thin proxy over shared/adzuna-core.js. Response shape is unchanged from
+// before this rewrite: raw Adzuna JSON passthrough on success (the client
+// normalizes it itself via shared/normalize.js), same error statuses/shapes
+// on failure.
 export default async function handler(req, res) {
-  const appId  = process.env.ADZUNA_APP_ID
-  const appKey = process.env.ADZUNA_APP_KEY
-
-  if (!appId || !appKey) {
-    return res.status(500).json({ error: 'ADZUNA_APP_ID / ADZUNA_APP_KEY not configured in environment' })
-  }
-
   const { page = '1', ...params } = req.query
 
-  const qs = new URLSearchParams({ app_id: appId, app_key: appKey, ...params })
-  const url = `https://api.adzuna.com/v1/api/jobs/us/search/${page}?${qs}`
+  const result = await adzunaRequest(params, { page })
 
-  let upstream
-  try {
-    upstream = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-  } catch (err) {
-    return res.status(502).json({ error: `Network error reaching Adzuna: ${err.message}` })
+  if (!result.ok) {
+    if (result.reason === 'missing_credentials') {
+      return res.status(500).json({ error: 'ADZUNA_APP_ID / ADZUNA_APP_KEY not configured in environment' })
+    }
+    if (result.reason === 'budget_exceeded') {
+      return res.status(500).json({ error: 'Adzuna daily call budget reached' })
+    }
+    if (result.reason === 'network_error') {
+      return res.status(502).json({ error: `Network error reaching Adzuna: ${result.detail}` })
+    }
+    if (result.reason === 'auth_failure') {
+      return res.status(result.status).json({
+        error: `Adzuna auth failure (${result.status}) — check ADZUNA_APP_ID / ADZUNA_APP_KEY`,
+        detail: result.detail,
+      })
+    }
+    // http_error
+    return res.status(result.status).json({ error: `Adzuna HTTP ${result.status}`, detail: result.detail })
   }
 
-  if (upstream.status === 401 || upstream.status === 403) {
-    const text = await upstream.text().catch(() => '')
-    return res.status(upstream.status).json({
-      error: `Adzuna auth failure (${upstream.status}) — check ADZUNA_APP_ID / ADZUNA_APP_KEY`,
-      detail: text.slice(0, 200),
-    })
-  }
-
-  if (!upstream.ok) {
-    const text = await upstream.text().catch(() => '')
-    return res.status(upstream.status).json({
-      error: `Adzuna HTTP ${upstream.status}`,
-      detail: text.slice(0, 200),
-    })
-  }
-
-  const data = await upstream.json()
   // 200 with 0 results is valid data, not an error
-  res.status(200).json(data)
+  res.status(200).json(result.data)
 }

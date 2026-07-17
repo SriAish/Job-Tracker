@@ -23,6 +23,16 @@ export default function App() {
     localStorage.removeItem('jt_lever_companies')
   }, [])
 
+  // Migration: resumes are a metadata-only name registry; strip any stored file bytes.
+  useEffect(() => {
+    const stored = storage.getResumes()
+    if (stored.some(r => 'data' in r)) {
+      const stripped = stored.map(({ data, ...rest }) => rest)
+      setResumes(stripped)
+      storage.saveResumes(stripped)
+    }
+  }, [])
+
   function updateApplications(apps) {
     setApplications(apps)
     storage.saveApplications(apps)
