@@ -5,7 +5,7 @@ import Browse from './tabs/Browse'
 import Applications from './tabs/Applications'
 import Resumes from './tabs/Resumes'
 import Settings from './tabs/Settings'
-import { COLORS } from './theme'
+import { COLORS, FONTS, CSS_VARS, APP_BACKGROUND, HEADER_BACKGROUND } from './theme'
 
 const TABS = ['Find Jobs', 'Browse', 'Applications', 'Resumes', 'Settings']
 
@@ -57,33 +57,86 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: COLORS.bg }}>
-      <nav style={{
-        display: 'flex', gap: 4, padding: '0 20px', background: COLORS.panel,
-        borderBottom: `1px solid ${COLORS.border}`, position: 'sticky', top: 0, zIndex: 10,
-      }}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '14px 4px',
-              margin: '0 12px',
-              background: 'transparent',
-              color: activeTab === tab ? COLORS.text : COLORS.textSecondary,
-              border: 'none',
-              borderBottom: activeTab === tab ? `2px solid ${COLORS.accent}` : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: activeTab === tab ? 600 : 500,
-            }}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+    <div
+      className="app"
+      style={{
+        ...CSS_VARS,
+        display: 'flex', flexDirection: 'column', minHeight: '100vh',
+        background: APP_BACKGROUND,
+      }}
+    >
+      <header
+        className="drop-in"
+        style={{
+          background: HEADER_BACKGROUND,
+          borderBottom: `1px solid ${COLORS.border}`,
+          position: 'sticky', top: 0, zIndex: 10,
+        }}
+      >
+        <div style={{
+          maxWidth: 960, margin: '0 auto', padding: '0 20px',
+          display: 'flex', alignItems: 'stretch', gap: 24, flexWrap: 'wrap',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 0' }}>
+            <span style={{
+              fontFamily: FONTS.display, fontSize: 18, fontWeight: 700,
+              letterSpacing: '-0.02em', color: COLORS.text, whiteSpace: 'nowrap',
+            }}>
+              Job Tracker<span className="cursor-blink" style={{ color: COLORS.accent }}>_</span>
+            </span>
+            <span style={{
+              fontFamily: FONTS.mono, fontSize: 10, color: COLORS.textMuted,
+              letterSpacing: '0.08em', whiteSpace: 'nowrap', paddingTop: 3,
+            }}>
+              pm · strategy · ops · applied ai
+            </span>
+          </div>
 
-      <main style={{ flex: 1, padding: '24px 20px', maxWidth: 960, width: '100%', margin: '0 auto' }}>
+          <nav style={{ display: 'flex', gap: 2, marginLeft: 'auto', alignItems: 'stretch' }}>
+            {TABS.map((tab, i) => {
+              const active = activeTab === tab
+              return (
+                <button
+                  key={tab}
+                  className="btn"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '0 12px',
+                    background: 'transparent',
+                    color: active ? COLORS.accent : COLORS.textSecondary,
+                    border: 'none',
+                    borderBottom: active ? `2px solid ${COLORS.accent}` : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontFamily: FONTS.mono,
+                    fontSize: 11,
+                    fontWeight: active ? 700 : 400,
+                    letterSpacing: '0.07em',
+                    textTransform: 'uppercase',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <span style={{
+                    fontSize: 9,
+                    color: active ? COLORS.accent : COLORS.textMuted,
+                    fontWeight: 400,
+                  }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  {tab}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+      </header>
+
+      <main
+        className="rise"
+        style={{
+          flex: 1, padding: '26px 20px 48px', maxWidth: 960, width: '100%',
+          margin: '0 auto', animationDelay: '140ms',
+        }}
+      >
         {activeTab === 'Find Jobs' && (
           <FindJobs applications={applications} resumes={resumes} onAddApplication={addApplication} />
         )}

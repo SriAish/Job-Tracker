@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { storage } from '../storage'
 import { buildBackupEnvelope, validateBackupEnvelope } from '../backup'
-import { COLORS, cardStyle, sectionLabelStyle, primaryButtonStyle, secondaryButtonStyle } from '../theme'
+import { COLORS, cardStyle, sectionLabelStyle, primaryButtonStyle, secondaryButtonStyle, pageTitleStyle, monoMetaStyle } from '../theme'
 
 function formatExportedAt(iso) {
   if (!iso) return 'never'
@@ -78,18 +78,28 @@ export default function Settings() {
 
   return (
     <div style={{ maxWidth: 620 }}>
-      <div style={{ ...cardStyle, padding: 20 }}>
-        <div style={{ ...sectionLabelStyle, marginBottom: 12 }}>Backup</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <h1 style={pageTitleStyle}>Settings</h1>
+        <span style={{ ...monoMetaStyle, fontSize: 10, letterSpacing: '0.08em' }}>
+          data lives in this browser · export is the backup
+        </span>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <button onClick={handleExport} style={primaryButtonStyle}>Export backup</button>
-          <span style={{ color: COLORS.textMuted, fontSize: 12 }}>
-            Last exported: {formatExportedAt(lastExportedAt)}
+      <div style={{ ...cardStyle, padding: '20px 22px' }}>
+        <div style={{ ...sectionLabelStyle, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span aria-hidden="true" style={{ color: COLORS.accent }}>▸</span>
+          Backup
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+          <button className="btn" onClick={handleExport} style={primaryButtonStyle}>Export backup</button>
+          <span style={{ ...monoMetaStyle, fontSize: 11 }}>
+            last exported: {formatExportedAt(lastExportedAt)}
           </span>
         </div>
 
         <div>
-          <button onClick={() => fileInputRef.current?.click()} style={secondaryButtonStyle}>
+          <button className="btn" onClick={() => fileInputRef.current?.click()} style={secondaryButtonStyle}>
             Restore from backup
           </button>
           <input
@@ -101,8 +111,12 @@ export default function Settings() {
           />
         </div>
 
+        <div style={{ ...monoMetaStyle, fontSize: 10, marginTop: 16, letterSpacing: '0.04em' }}>
+          restore replaces everything · export first if unsure
+        </div>
+
         {importError && (
-          <div style={{ color: COLORS.danger, fontSize: 12, marginTop: 12 }}>
+          <div className="fade" style={{ color: COLORS.danger, fontSize: 12, marginTop: 12 }}>
             {importError}
           </div>
         )}

@@ -4,10 +4,13 @@
   padding: 0;
 }
 
+/* Dark canvas before React mounts; all color values live in theme.js and
+   arrive as custom properties on .app. */
+:root {
+  color-scheme: dark;
+}
+
 body {
-  background: #f8f9fc;
-  color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   min-height: 100vh;
   font-size: 14px;
   line-height: 1.5;
@@ -19,22 +22,27 @@ body {
   flex-direction: column;
 }
 
+.app {
+  font-family: var(--font-body), sans-serif;
+  color: var(--text);
+}
+
 input, textarea, select {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--inset);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #0f172a;
+  color: var(--text);
   font-family: inherit;
   font-size: 13px;
   outline: none;
 }
 
 input:focus, textarea:focus, select:focus {
-  border-color: #4f46e5;
+  border-color: var(--accent);
 }
 
 select option {
-  background: #ffffff;
+  background: var(--panel);
 }
 
 button {
@@ -42,8 +50,17 @@ button {
   cursor: pointer;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 a {
-  color: #4f46e5;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -51,6 +68,91 @@ a:hover {
   text-decoration: underline;
 }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #f8f9fc; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 3px; }
+/* Pressable affordance for buttons */
+.btn {
+  transition: background 150ms var(--ease), color 150ms var(--ease),
+    border-color 150ms var(--ease), transform 120ms var(--ease), opacity 150ms var(--ease);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.link-chip {
+  transition: border-color 150ms var(--ease), color 150ms var(--ease);
+}
+
+.link-chip:hover {
+  border-color: var(--accent) !important;
+  color: var(--text) !important;
+  text-decoration: none;
+}
+
+/* ── The load moment ─────────────────────────────────────────────────────
+   Header drops in, content rises after it; search results reuse .rise
+   with a per-card delay capped at the first ~15 cards. */
+
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.97) translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* backwards (not both): a lingering transform fill would make these
+   containers the containing block for position:fixed children (modal). */
+.drop-in { animation: drop-in 420ms var(--ease) backwards; }
+.rise    { animation: rise 450ms var(--ease) backwards; }
+.pop     { animation: pop 220ms var(--ease) backwards; }
+.fade    { animation: fade 200ms var(--ease) backwards; }
+
+/* Blinking cursor block in the wordmark */
+@keyframes blink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0.15; }
+}
+
+.cursor-blink {
+  animation: blink 1.2s step-end infinite;
+}
+
+/* Search-in-flight sweep bar */
+@keyframes sweep {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(420%); }
+}
+
+.scan-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  overflow: hidden;
+}
+
+.scan-thumb {
+  width: 26%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: sweep 1.3s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

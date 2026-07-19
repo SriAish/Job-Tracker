@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { STATUSES } from '../constants'
 import StatusBadge from '../components/StatusBadge'
 import AddApplicationModal from '../components/AddApplicationModal'
-import { COLORS, cardStyle, inputStyle, primaryButtonStyle } from '../theme'
+import { COLORS, FONTS, STATUS_COLORS, cardStyle, inputStyle, primaryButtonStyle, pageTitleStyle, monoMetaStyle } from '../theme'
 
 const FILTERS = ['All', 'Not Applied', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Withdrawn']
 
@@ -52,15 +52,33 @@ export default function Applications({ applications, resumes, onUpdate }) {
 
   return (
     <div>
+      {/* Page header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <h1 style={pageTitleStyle}>Applications</h1>
+        <span style={{ ...monoMetaStyle, fontSize: 10, letterSpacing: '0.08em' }}>
+          pipeline board · status · notes · resume used
+        </span>
+      </div>
+
       {/* Stats */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         {Object.entries(counts).map(([k, v]) => (
           <div key={k} style={{
             ...cardStyle,
-            padding: '8px 14px', flex: 1, textAlign: 'center',
+            padding: '10px 14px 8px', flex: 1, textAlign: 'center',
           }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.text }}>{v}</div>
-            <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>{k}</div>
+            <div style={{
+              fontFamily: FONTS.mono, fontSize: 22, fontWeight: 700, lineHeight: 1.1,
+              color: STATUS_COLORS[k]?.color ?? COLORS.text,
+            }}>
+              {v}
+            </div>
+            <div style={{
+              fontFamily: FONTS.mono, fontSize: 9, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: COLORS.textMuted, marginTop: 3,
+            }}>
+              {k}
+            </div>
           </div>
         ))}
       </div>
@@ -69,24 +87,31 @@ export default function Applications({ applications, resumes, onUpdate }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              padding: '4px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
-              background: filter === f ? COLORS.accent : COLORS.panel,
-              color: filter === f ? '#fff' : COLORS.textSecondary,
-              border: filter === f ? `1px solid ${COLORS.accent}` : `1px solid ${COLORS.border}`,
+            <button key={f} className="btn" onClick={() => setFilter(f)} style={{
+              padding: '4px 11px', fontSize: 11, borderRadius: 999, cursor: 'pointer',
+              fontFamily: FONTS.mono, letterSpacing: '0.04em',
+              fontWeight: filter === f ? 700 : 400,
+              background: filter === f ? COLORS.accentSoft : 'transparent',
+              color: filter === f ? COLORS.accent : COLORS.textSecondary,
+              border: filter === f ? `1px solid ${COLORS.accent}` : `1px solid ${COLORS.borderStrong}`,
             }}>
               {f}
             </button>
           ))}
         </div>
-        <button onClick={() => setAddOpen(true)} style={primaryButtonStyle}>
+        <button className="btn" onClick={() => setAddOpen(true)} style={primaryButtonStyle}>
           + Add
         </button>
       </div>
 
       {filtered.length === 0 && (
-        <div style={{ color: COLORS.textMuted, fontSize: 13, padding: '24px 0', textAlign: 'center' }}>
-          No applications{filter !== 'All' ? ` with status "${filter}"` : ''}.
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <div aria-hidden="true" style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.textMuted, letterSpacing: '0.3em', marginBottom: 12 }}>
+            [ · · · ]
+          </div>
+          <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>
+            No applications{filter !== 'All' ? ` with status "${filter}"` : ''}.
+          </div>
         </div>
       )}
 
@@ -137,17 +162,17 @@ function AppCard({ app, resumes, expanded, onToggle, onStatusChange, onEdit, onD
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             {app.url
-              ? <a href={app.url} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.text, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>{app.title}</a>
-              : <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 500 }}>{app.title}</span>
+              ? <a href={app.url} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.text, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>{app.title}</a>
+              : <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 600 }}>{app.title}</span>
             }
             <span style={{ color: COLORS.textSecondary, fontSize: 12 }}>{app.company}</span>
             {app.location && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{app.location}</span>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5, flexWrap: 'wrap' }}>
             <StatusBadge status={app.status} onChange={onStatusChange} />
-            {resume && <span style={{ fontSize: 11, color: COLORS.textMuted }}>📄 {resume.name}</span>}
-            {app.source && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{app.source}</span>}
-            {date && <span style={{ fontSize: 11, color: COLORS.textMuted }}>{date}</span>}
+            {resume && <span style={{ ...monoMetaStyle, fontSize: 10 }}>cv: {resume.name}</span>}
+            {app.source && <span style={{ ...monoMetaStyle, fontSize: 10 }}>{app.source}</span>}
+            {date && <span style={{ ...monoMetaStyle, fontSize: 10 }}>{date}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
@@ -156,7 +181,7 @@ function AppCard({ app, resumes, expanded, onToggle, onStatusChange, onEdit, onD
         </div>
       </div>
       {expanded && (
-        <div style={{ padding: '8px 12px 10px 32px', borderTop: `1px solid ${COLORS.border}` }}>
+        <div style={{ padding: '8px 12px 10px 32px', borderTop: `1px solid ${COLORS.border}`, background: COLORS.inset, borderRadius: '0 0 8px 8px' }}>
           {app.description && (
             <div style={{ fontSize: 12, color: COLORS.textSecondary, lineHeight: 1.6, marginBottom: app.notes ? 8 : 0 }}>
               {app.description}
@@ -182,7 +207,7 @@ function EditCard({ app, resumes, onSave, onCancel }) {
   const inp = { ...inputStyle, padding: '5px 8px', fontSize: 12 }
 
   return (
-    <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.accent}`, borderRadius: 8, marginBottom: 6, padding: '12px 14px' }}>
+    <div className="pop" style={{ background: COLORS.panelRaised, border: `1px solid ${COLORS.accent}`, borderRadius: 8, marginBottom: 6, padding: '12px 14px' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input style={inp} value={form.title} onChange={e => set('title', e.target.value)} placeholder="Title" />
         <input style={inp} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Company" />
@@ -194,7 +219,7 @@ function EditCard({ app, resumes, onSave, onCancel }) {
         <input style={inp} type="date" value={form.appliedAt} onChange={e => set('appliedAt', e.target.value)} />
         <input style={inp} value={form.source} onChange={e => set('source', e.target.value)} placeholder="Source" />
         <select style={inp} value={form.resumeId} onChange={e => set('resumeId', e.target.value)}>
-          <option value="">— no resume —</option>
+          <option value="">no resume</option>
           {resumes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       </div>
@@ -210,10 +235,11 @@ function EditCard({ app, resumes, onSave, onCancel }) {
 
 function Btn({ onClick, children, danger, primary }) {
   return (
-    <button onClick={onClick} style={{
+    <button className="btn" onClick={onClick} style={{
       padding: '3px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
-      background: primary ? COLORS.accent : danger ? COLORS.dangerSoft : COLORS.panel,
-      color: primary ? '#fff' : danger ? COLORS.danger : COLORS.textSecondary,
+      fontWeight: primary ? 700 : 400,
+      background: primary ? COLORS.accent : danger ? COLORS.dangerSoft : 'transparent',
+      color: primary ? COLORS.accentInk : danger ? COLORS.danger : COLORS.textSecondary,
       border: primary ? 'none' : danger ? 'none' : `1px solid ${COLORS.border}`,
     }}>
       {children}

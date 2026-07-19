@@ -38,17 +38,16 @@ export default function StatusBadge({ status, onChange }) {
         {status}
       </span>
       {open && (
-        <div style={{
+        <div className="pop" style={{
           position: 'absolute',
           top: 'calc(100% + 4px)',
           left: 0,
-          background: COLORS.panel,
-          border: `1px solid ${COLORS.border}`,
+          background: COLORS.panelRaised,
+          border: `1px solid ${COLORS.borderStrong}`,
           borderRadius: 8,
           zIndex: 50,
           minWidth: 130,
           overflow: 'hidden',
-          boxShadow: '0 4px 16px rgba(15,23,42,0.12)',
         }}>
           {STATUSES.map(s => (
             <div

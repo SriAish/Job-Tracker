@@ -1,11 +1,8 @@
+import { STATUS_COLORS } from './theme'
+
 export const STATUSES = [
-  { value: 'Not Applied', color: '#64748b', bg: '#f1f5f9' },
-  { value: 'Applied',     color: '#16a34a', bg: '#dcfce7' },
-  { value: 'Interviewing',color: '#ca8a04', bg: '#fef9c3' },
-  { value: 'Offer',       color: '#7c3aed', bg: '#ede9fe' },
-  { value: 'Rejected',    color: '#dc2626', bg: '#fee2e2' },
-  { value: 'Withdrawn',   color: '#64748b', bg: '#f1f5f9' },
-]
+  'Not Applied', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Withdrawn',
+].map(value => ({ value, ...STATUS_COLORS[value] }))
 
 export const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.value, s.color]))
 export const STATUS_BG_MAP = Object.fromEntries(STATUSES.map(s => [s.value, s.bg]))

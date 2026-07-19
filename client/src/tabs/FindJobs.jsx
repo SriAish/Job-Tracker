@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import AddApplicationModal from '../components/AddApplicationModal'
 import BoardsFailureBanner from '../components/BoardsFailureBanner'
 import { storage } from '../storage'
-import { COLORS, cardStyle, primaryButtonStyle } from '../theme'
+import { COLORS, FONTS, SOURCE_COLORS, cardStyle, primaryButtonStyle, pageTitleStyle, monoMetaStyle } from '../theme'
 import { isUS, extractMaxYears, withinHours } from '@shared/filters.js'
 import { mergeJobs } from '@shared/merge.js'
 import { ROLE_KEYWORDS, ADZUNA_KEYWORD_TERMS } from '@shared/constants.js'
@@ -304,8 +304,9 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     <>
       {' · results from '}{formatCacheAge(boardsCacheInfo.age)}{' '}
       <button
+        className="btn"
         onClick={() => handleSearch({ forceRefresh: true })}
-        style={{ background: 'none', border: 'none', color: COLORS.accent, fontSize: 12, cursor: 'pointer', padding: 0 }}
+        style={{ background: 'none', border: 'none', color: COLORS.accent, fontFamily: FONTS.mono, fontSize: 11, cursor: 'pointer', padding: 0 }}
       >
         Refresh
       </button>
@@ -314,112 +315,147 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
 
   return (
     <div>
-      {/* Row 1: source pills + time filter + search */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-        {SOURCE_PILLS.map(({ key, label }) => {
-          const on = sources[key]
-          return (
-            <button
-              key={key}
-              onClick={() => toggleSource(key)}
-              style={{
-                padding: '4px 11px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                cursor: 'pointer', border: `1px solid ${on ? COLORS.accent : COLORS.border}`,
-                background: on ? COLORS.accent : COLORS.panel,
-                color: on ? '#fff' : COLORS.textMuted,
-                transition: 'all 0.1s',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
+      {/* Page header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <h1 style={pageTitleStyle}>Find Jobs</h1>
+        <span style={{ ...monoMetaStyle, fontSize: 10, letterSpacing: '0.08em' }}>
+          one sweep · four sources · dedup at merge
+        </span>
+      </div>
 
-        {/* Time filter */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 2, border: `1px solid ${COLORS.border}`, borderRadius: 6, overflow: 'hidden' }}>
-            {[{ key: 'any', label: 'Any time' }, { key: '48h', label: '48h' }, { key: '24h', label: '24h' }].map(({ key, label }) => (
+      {/* Control deck */}
+      <div style={{ ...cardStyle, padding: '12px 14px', marginBottom: 18 }}>
+        {/* Row 1: source pills + time filter + search */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          {SOURCE_PILLS.map(({ key, label }) => {
+            const on = sources[key]
+            return (
               <button
                 key={key}
-                onClick={() => setRecency(key)}
+                className="btn"
+                onClick={() => toggleSource(key)}
                 style={{
-                  padding: '4px 10px', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                  border: 'none', borderRadius: 0,
-                  background: recency === key ? COLORS.accentSoft : 'transparent',
-                  color: recency === key ? COLORS.accent : COLORS.textMuted,
+                  padding: '4px 11px', borderRadius: 999, fontSize: 10, fontWeight: on ? 700 : 400,
+                  fontFamily: FONTS.mono, letterSpacing: '0.07em', textTransform: 'uppercase',
+                  cursor: 'pointer', border: `1px solid ${on ? COLORS.accent : COLORS.borderStrong}`,
+                  background: on ? COLORS.accentSoft : 'transparent',
+                  color: on ? COLORS.accent : COLORS.textMuted,
                 }}
               >
                 {label}
               </button>
-            ))}
+            )
+          })}
+
+          {/* Time filter */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 2, border: `1px solid ${COLORS.border}`, borderRadius: 6, overflow: 'hidden', background: COLORS.inset }}>
+              {[{ key: 'any', label: 'Any time' }, { key: '48h', label: '48h' }, { key: '24h', label: '24h' }].map(({ key, label }) => (
+                <button
+                  key={key}
+                  className="btn"
+                  onClick={() => setRecency(key)}
+                  style={{
+                    padding: '4px 10px', fontSize: 10, fontWeight: recency === key ? 700 : 400,
+                    fontFamily: FONTS.mono, letterSpacing: '0.05em', cursor: 'pointer',
+                    border: 'none', borderRadius: 0,
+                    background: recency === key ? COLORS.accentSoft : 'transparent',
+                    color: recency === key ? COLORS.accent : COLORS.textMuted,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn"
+              onClick={handleSearch}
+              disabled={loading || noSourceActive}
+              style={{ ...primaryButtonStyle, opacity: noSourceActive ? 0.4 : 1 }}
+            >
+              {loading ? 'Searching…' : 'Search'}
+            </button>
           </div>
-          <button
-            onClick={handleSearch}
-            disabled={loading || noSourceActive}
-            style={{ ...primaryButtonStyle, opacity: noSourceActive ? 0.4 : 1 }}
-          >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
+        </div>
+
+        {/* Row 2: secondary filters */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: usOnly ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={usOnly}
+              onChange={e => setUsOnly(e.target.checked)}
+              style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
+            />
+            US only
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: expFilter ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={expFilter}
+              onChange={e => setExpFilter(e.target.checked)}
+              style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
+            />
+            ≤
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={maxYears}
+              onChange={e => setMaxYears(Number(e.target.value))}
+              disabled={!expFilter}
+              style={{ width: 40, padding: '2px 4px', fontSize: 12, fontFamily: FONTS.mono, textAlign: 'center', opacity: expFilter ? 1 : 0.4 }}
+            />
+            yrs exp
+          </label>
+          {dismissedCount > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: showHidden ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={e => setShowHidden(e.target.checked)}
+                style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
+              />
+              Show hidden ({dismissedCount})
+            </label>
+          )}
         </div>
       </div>
 
-      {/* Row 3: secondary filters */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: usOnly ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
-          <input
-            type="checkbox"
-            checked={usOnly}
-            onChange={e => setUsOnly(e.target.checked)}
-            style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
-          />
-          US only
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: expFilter ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
-          <input
-            type="checkbox"
-            checked={expFilter}
-            onChange={e => setExpFilter(e.target.checked)}
-            style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
-          />
-          ≤
-          <input
-            type="number"
-            min={1}
-            max={30}
-            value={maxYears}
-            onChange={e => setMaxYears(Number(e.target.value))}
-            disabled={!expFilter}
-            style={{ width: 36, padding: '2px 4px', fontSize: 12, textAlign: 'center', opacity: expFilter ? 1 : 0.4 }}
-          />
-          yrs exp
-        </label>
-        {dismissedCount > 0 && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: showHidden ? COLORS.text : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>
-            <input
-              type="checkbox"
-              checked={showHidden}
-              onChange={e => setShowHidden(e.target.checked)}
-              style={{ width: 'auto', accentColor: COLORS.accent, cursor: 'pointer' }}
-            />
-            Show hidden ({dismissedCount})
-          </label>
-        )}
-      </div>
-
       {status && !loading && (
-        <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>
+        <div style={{ ...monoMetaStyle, marginBottom: 12 }}>
           {status}
           {cacheBadge}
         </div>
       )}
       {loading && (
-        <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 12 }}>
-          {status}
-          {cacheBadge}
+        <div className="fade" style={{ marginBottom: 14 }}>
+          <div style={{ ...monoMetaStyle, color: COLORS.textSecondary, marginBottom: 8 }}>
+            {status}
+            {cacheBadge}
+          </div>
+          <div className="scan-track" style={{ maxWidth: 320 }}>
+            <div className="scan-thumb" />
+          </div>
         </div>
       )}
 
       <BoardsFailureBanner errors={boardErrors} requestedAshbySlugs={requestedAshbySlugs} />
+
+      {/* Idle state: no sweep run yet */}
+      {!loading && rawJobs.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '64px 0 48px' }}>
+          <div aria-hidden="true" style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.textMuted, letterSpacing: '0.3em', marginBottom: 14 }}>
+            [ · · · ]
+          </div>
+          <div style={{ fontFamily: FONTS.display, fontSize: 20, fontWeight: 600, color: COLORS.text, marginBottom: 6 }}>
+            Ready to sweep
+          </div>
+          <div style={{ ...monoMetaStyle, letterSpacing: '0.05em' }}>
+            pick sources · hit Search · fresh roles land here
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {jobs.length > 0 && (
@@ -435,6 +471,7 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
               <JobCard
                 key={key}
                 job={job}
+                index={i}
                 tracked={isTracked(job)}
                 expanded={!!expanded[key]}
                 onToggle={() => setExpanded(e => ({ ...e, [key]: !e[key] }))}
@@ -468,32 +505,46 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
 
 function DismissedRow({ job, onUndo }) {
   return (
-    <div style={{ ...cardStyle, marginBottom: 6, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ color: COLORS.textMuted, fontSize: 12 }}>Dismissed</span>
-      <span style={{ color: COLORS.textMuted, fontSize: 12 }}>·</span>
-      <button onClick={onUndo} style={{ background: 'none', border: 'none', color: COLORS.accent, fontSize: 12, cursor: 'pointer', padding: 0 }}>
+    <div style={{ ...cardStyle, marginBottom: 6, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ ...monoMetaStyle, letterSpacing: '0.05em' }}>dismissed</span>
+      <span style={monoMetaStyle}>·</span>
+      <button className="btn" onClick={onUndo} style={{ background: 'none', border: 'none', color: COLORS.accent, fontFamily: FONTS.mono, fontSize: 11, cursor: 'pointer', padding: 0 }}>
         Undo
       </button>
     </div>
   )
 }
 
-function JobCard({ job, tracked, expanded, onToggle, onTrack, dismissed, onDismiss, onRestore }) {
+const SOURCE_TAGS = {
+  greenhouse: 'GH',
+  lever: 'LVR',
+  adzuna: 'ADZ',
+  ashby: 'ASH',
+}
+
+function JobCard({ job, index, tracked, expanded, onToggle, onTrack, dismissed, onDismiss, onRestore }) {
   const date = job.postedAt ? new Date(job.postedAt).toLocaleDateString() : ''
   const isGH = job.source === 'greenhouse'
   const isLV = job.source === 'lever'
   const isAZ = job.source === 'adzuna'
+  const srcColors = SOURCE_COLORS[job.source] ?? SOURCE_COLORS.ashby
 
   return (
-    <div style={{ ...cardStyle, marginBottom: 6, opacity: dismissed ? 0.55 : 1 }}>
+    <div
+      className={index < 15 ? 'rise' : undefined}
+      style={{
+        ...cardStyle, marginBottom: 6, opacity: dismissed ? 0.55 : 1,
+        animationDelay: index < 15 ? `${index * 30}ms` : undefined,
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px' }}>
-        <button onClick={onToggle} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 9, padding: 0, flexShrink: 0, width: 12 }}>
+        <button className="btn" onClick={onToggle} style={{ background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer', fontSize: 9, padding: 0, flexShrink: 0, width: 12 }}>
           {expanded ? '▼' : '▶'}
         </button>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <a href={job.url || '#'} target="_blank" rel="noopener noreferrer"
-              style={{ color: COLORS.text, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+              style={{ color: COLORS.text, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               {job.title}
             </a>
             <span style={{ color: COLORS.textSecondary, fontSize: 12 }}>{job.company}</span>
@@ -501,37 +552,37 @@ function JobCard({ job, tracked, expanded, onToggle, onTrack, dismissed, onDismi
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {date && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>{date}</span>}
+          {date && <span style={{ ...monoMetaStyle, fontSize: 10 }}>{date}</span>}
           <span style={{
-            padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-            background: isGH ? '#eef2ff' : isLV ? '#f0fdf4' : isAZ ? '#fff7ed' : '#f5f3ff',
-            color: isGH ? '#4f46e5' : isLV ? '#16a34a' : isAZ ? '#ea580c' : '#7c3aed',
+            padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+            fontFamily: FONTS.mono, letterSpacing: '0.08em',
+            background: srcColors.bg, color: srcColors.color,
           }}>
-            {isGH ? 'GH' : isLV ? 'Lever' : isAZ ? 'AZ' : 'Ashby'}
+            {SOURCE_TAGS[job.source] ?? 'ASH'}
           </span>
           {tracked ? (
-            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, background: '#dcfce7', color: '#16a34a' }}>
+            <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, background: COLORS.greenSoft, color: COLORS.green }}>
               Tracked
             </span>
           ) : (
-            <button onClick={onTrack} style={{
+            <button className="btn" onClick={onTrack} style={{
               padding: '2px 8px', background: COLORS.accentSoft, color: COLORS.accent,
-              border: 'none', borderRadius: 4, fontSize: 11,
+              border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
             }}>
               + Track
             </button>
           )}
           {job.url && (
             dismissed ? (
-              <button onClick={onRestore} style={{
-                padding: '2px 8px', background: COLORS.panel, color: COLORS.textSecondary,
+              <button className="btn" onClick={onRestore} style={{
+                padding: '2px 8px', background: 'transparent', color: COLORS.textSecondary,
                 border: `1px solid ${COLORS.border}`, borderRadius: 4, fontSize: 11, cursor: 'pointer',
               }}>
                 Restore
               </button>
             ) : (
-              <button onClick={onDismiss} style={{
-                padding: '2px 8px', background: COLORS.panel, color: COLORS.textMuted,
+              <button className="btn" onClick={onDismiss} style={{
+                padding: '2px 8px', background: 'transparent', color: COLORS.textMuted,
                 border: `1px solid ${COLORS.border}`, borderRadius: 4, fontSize: 11, cursor: 'pointer',
               }}>
                 Dismiss
@@ -541,9 +592,9 @@ function JobCard({ job, tracked, expanded, onToggle, onTrack, dismissed, onDismi
         </div>
       </div>
       {expanded && (
-        <div style={{ padding: '8px 12px 10px 32px', color: COLORS.textSecondary, fontSize: 12, lineHeight: 1.65, borderTop: `1px solid ${COLORS.border}` }}>
+        <div style={{ padding: '8px 12px 10px 32px', color: COLORS.textSecondary, fontSize: 12, lineHeight: 1.65, borderTop: `1px solid ${COLORS.border}`, background: COLORS.inset, borderRadius: '0 0 8px 8px' }}>
           {isAZ && (
-            <div style={{ fontSize: 11, color: '#ea580c', marginBottom: 6, fontStyle: 'italic' }}>
+            <div style={{ fontSize: 11, color: SOURCE_COLORS.adzuna.color, marginBottom: 6, fontStyle: 'italic' }}>
               via Adzuna aggregator, verify on company site before applying
             </div>
           )}

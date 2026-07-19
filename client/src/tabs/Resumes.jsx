@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { COLORS, cardStyle, inputStyle, sectionLabelStyle } from '../theme'
+import { COLORS, FONTS, cardStyle, inputStyle, pageTitleStyle, monoMetaStyle } from '../theme'
 
 function baseName(fileName) {
   const idx = fileName.lastIndexOf('.')
@@ -76,6 +76,13 @@ export default function Resumes({ resumes, onUpdate }) {
 
   return (
     <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <h1 style={pageTitleStyle}>Resumes</h1>
+        <span style={{ ...monoMetaStyle, fontSize: 10, letterSpacing: '0.08em' }}>
+          name registry · files stay on your laptop
+        </span>
+      </div>
+
       {/* Registration */}
       <div
         onClick={() => fileInputRef.current?.click()}
@@ -84,18 +91,27 @@ export default function Resumes({ resumes, onUpdate }) {
         onDrop={handleDrop}
         style={{
           ...cardStyle,
-          padding: 24,
+          padding: '30px 24px',
           marginBottom: message ? 8 : 24,
           textAlign: 'center',
           cursor: 'pointer',
           borderStyle: 'dashed',
-          borderColor: isDragging ? COLORS.accent : COLORS.border,
-          background: isDragging ? COLORS.accentSoft : COLORS.panel,
+          borderWidth: 1.5,
+          borderColor: isDragging ? COLORS.accent : COLORS.borderStrong,
+          background: isDragging ? COLORS.accentSoft : 'transparent',
         }}
       >
-        <div style={{ ...sectionLabelStyle, marginBottom: 8 }}>Register Resume</div>
+        <div aria-hidden="true" style={{ fontFamily: FONTS.mono, fontSize: 15, color: isDragging ? COLORS.accent : COLORS.textMuted, letterSpacing: '0.2em', marginBottom: 10 }}>
+          [+]
+        </div>
+        <div style={{ fontFamily: FONTS.display, fontSize: 16, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>
+          Register a resume
+        </div>
         <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>
           Drag and drop files here, or click to browse
+        </div>
+        <div style={{ ...monoMetaStyle, fontSize: 10, marginTop: 8, letterSpacing: '0.05em' }}>
+          names only · file bytes are never read
         </div>
         <input
           ref={fileInputRef}
@@ -108,18 +124,23 @@ export default function Resumes({ resumes, onUpdate }) {
       </div>
 
       {message && (
-        <div style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 24, textAlign: 'center' }}>
+        <div className="fade" style={{ ...monoMetaStyle, marginBottom: 24, textAlign: 'center' }}>
           {message}
         </div>
       )}
 
       {/* List */}
       {resumes.length === 0 && (
-        <div style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>No resumes registered yet.</div>
+        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+          <div aria-hidden="true" style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.textMuted, letterSpacing: '0.3em', marginBottom: 12 }}>
+            [ · · · ]
+          </div>
+          <div style={{ color: COLORS.textSecondary, fontSize: 13 }}>No resumes registered yet.</div>
+        </div>
       )}
 
-      {resumes.map(r => (
-        <div key={r.id} style={{ ...cardStyle, padding: '10px 14px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
+      {resumes.map((r, i) => (
+        <div key={r.id} className={i < 15 ? 'rise' : undefined} style={{ ...cardStyle, padding: '10px 14px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10, animationDelay: `${i * 40}ms` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {renamingId === r.id ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -130,17 +151,17 @@ export default function Resumes({ resumes, onUpdate }) {
                   onKeyDown={e => { if (e.key === 'Enter') saveRename(r.id); if (e.key === 'Escape') setRenamingId(null) }}
                   autoFocus
                 />
-                <button onClick={() => saveRename(r.id)} style={{ padding: '4px 10px', background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12 }}>Save</button>
-                <button onClick={() => setRenamingId(null)} style={{ padding: '4px 10px', background: COLORS.panel, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}`, borderRadius: 6, fontSize: 12 }}>Cancel</button>
+                <button className="btn" onClick={() => saveRename(r.id)} style={{ padding: '4px 10px', background: COLORS.accent, color: COLORS.accentInk, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>Save</button>
+                <button className="btn" onClick={() => setRenamingId(null)} style={{ padding: '4px 10px', background: 'transparent', color: COLORS.textSecondary, border: `1px solid ${COLORS.borderStrong}`, borderRadius: 6, fontSize: 12 }}>Cancel</button>
               </div>
             ) : (
               <>
-                <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 500 }}>{r.name}</span>
-                <span style={{ color: COLORS.textMuted, fontSize: 11, marginLeft: 8 }}>{r.fileName}</span>
+                <span style={{ color: COLORS.text, fontSize: 13, fontWeight: 600 }}>{r.name}</span>
+                <span style={{ ...monoMetaStyle, fontSize: 10, marginLeft: 8 }}>{r.fileName}</span>
               </>
             )}
-            <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
-              {new Date(r.uploadedAt).toLocaleDateString()}
+            <div style={{ ...monoMetaStyle, fontSize: 10, marginTop: 3 }}>
+              registered {new Date(r.uploadedAt).toLocaleDateString()}
             </div>
           </div>
           {renamingId !== r.id && (
@@ -157,9 +178,9 @@ export default function Resumes({ resumes, onUpdate }) {
 
 function SmBtn({ onClick, children, danger }) {
   return (
-    <button onClick={onClick} style={{
+    <button className="btn" onClick={onClick} style={{
       padding: '3px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
-      background: danger ? COLORS.dangerSoft : COLORS.panel,
+      background: danger ? COLORS.dangerSoft : 'transparent',
       color: danger ? COLORS.danger : COLORS.textSecondary,
       border: danger ? 'none' : `1px solid ${COLORS.border}`,
     }}>

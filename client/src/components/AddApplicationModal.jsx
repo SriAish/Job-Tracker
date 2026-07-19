@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Modal from './Modal'
 import { STATUSES } from '../constants'
-import { COLORS, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../theme'
+import { COLORS, FONTS, inputStyle, primaryButtonStyle, secondaryButtonStyle } from '../theme'
 import { storage } from '../storage'
 
 const EMPTY = {
@@ -11,7 +11,10 @@ const EMPTY = {
 }
 
 const field = { marginBottom: 12 }
-const label = { display: 'block', fontSize: 11, color: COLORS.textSecondary, marginBottom: 4 }
+const label = {
+  display: 'block', fontSize: 10, color: COLORS.textSecondary, marginBottom: 4,
+  fontFamily: FONTS.mono, letterSpacing: '0.08em', textTransform: 'uppercase',
+}
 const input = { ...inputStyle, width: '100%' }
 
 export default function AddApplicationModal({ initial, resumes = [], onSave, onClose, isEdit }) {
@@ -65,7 +68,7 @@ export default function AddApplicationModal({ initial, resumes = [], onSave, onC
           <div style={field}>
             <label style={label}>Resume</label>
             <select style={input} value={form.resumeId} onChange={e => set('resumeId', e.target.value)}>
-              <option value="">— none —</option>
+              <option value="">none</option>
               {resumes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
@@ -79,10 +82,10 @@ export default function AddApplicationModal({ initial, resumes = [], onSave, onC
           <textarea style={{ ...input, height: 60, resize: 'vertical' }} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-          <button type="button" onClick={onClose} style={secondaryButtonStyle}>
+          <button type="button" className="btn" onClick={onClose} style={secondaryButtonStyle}>
             Cancel
           </button>
-          <button type="submit" style={primaryButtonStyle}>
+          <button type="submit" className="btn" style={primaryButtonStyle}>
             {isEdit ? 'Save' : 'Add'}
           </button>
         </div>
