@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Job Tracker daily digest LaunchAgent. Reference copy; the live copy is
+  installed at ~/Library/LaunchAgents/local.jobtracker.digest.plist.
+
+  Two values in this file are machine specific and must be regenerated if
+  the repo moves or node is reinstalled or upgraded:
+
+  1. The node binary path (first ProgramArguments entry). Regenerate with
+     "which node" in your shell. launchd has no shell PATH, so a bare
+     "node" will not resolve.
+  2. The repo root, which appears in the script path, WorkingDirectory,
+     StandardOutPath, and StandardErrorPath. Use the absolute path of the
+     repository checkout (currently /Users/aish/Documents/Job-Tracker).
+
+  After editing, copy to ~/Library/LaunchAgents/ and reload.
+  Full runbook: cron/README.md in this repo.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>local.jobtracker.digest</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/node</string>
+		<string>/Users/aish/Documents/Job-Tracker/cron/jobtrack.js</string>
+		<string>--wait</string>
+		<string>30</string>
+	</array>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>9</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>/Users/aish/Documents/Job-Tracker</string>
+	<key>StandardOutPath</key>
+	<string>/Users/aish/Documents/Job-Tracker/cron/digest.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/aish/Documents/Job-Tracker/cron/digest.log</string>
+</dict>
+</plist>

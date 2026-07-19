@@ -15,6 +15,8 @@ import { searchAdzuna, getAdzunaCallCount } from '../shared/adzuna-core.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SEEN_FILE = path.join(__dirname, '.seen-jobs.json')
 const DRY_RUN = process.argv.includes('--dry-run')
+const waitFlagIndex = process.argv.indexOf('--wait')
+const WAIT_SECONDS = waitFlagIndex === -1 ? 0 : Number(process.argv[waitFlagIndex + 1]) || 0
 const DIGEST_WINDOW_HOURS = 48
 
 // Tolerant load: entries are keyed by job URL. An old-format file (array of
@@ -158,6 +160,11 @@ async function sendFailureEmail(err) {
 
 async function main() {
   console.log(`Job Tracker cron starting…${DRY_RUN ? ' (dry run)' : ''}`)
+
+  if (WAIT_SECONDS > 0) {
+    console.log(`Waiting ${WAIT_SECONDS} seconds before fetching (wake-from-sleep network settle)`)
+    await new Promise(resolve => setTimeout(resolve, WAIT_SECONDS * 1000))
+  }
 
   const seen = loadSeen()
   const issues = []

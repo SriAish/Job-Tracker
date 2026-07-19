@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import AddApplicationModal from '../components/AddApplicationModal'
 import BoardsFailureBanner from '../components/BoardsFailureBanner'
 import { storage } from '../storage'
@@ -63,13 +63,47 @@ async function fetchAdzunaMode2(onProgress, maxDaysOld = 7) {
 
 // ── Greenhouse / Ashby / Lever (shared boards endpoint) ─────────────────────────
 
-async function fetchBoards(sources) {
+// Step 8 (measurement only): returns fetch timing and payload size alongside
+// the parsed body. Reading text first and JSON.parse-ing it does not change
+// the data the caller gets; it only makes the payload byte count available.
+async function fetchBoards(sources, forceRefresh = false) {
+  const start = performance.now()
   const r = await fetch('/api/boards', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sources }),
+    body: JSON.stringify({ sources, forceRefresh }),
   })
-  return r.json() // {jobs, errors}
+  const text = await r.text()
+  const fetchMs = Math.round(performance.now() - start)
+  const payloadBytes = text.length
+  const data = JSON.parse(text) // {jobs, errors, timings, cached, age}
+  return { data, fetchMs, payloadBytes }
+}
+
+function formatCacheAge(ms) {
+  const mins = Math.round(ms / 60000)
+  return mins < 1 ? 'under a min ago' : `${mins} min ago`
+}
+
+// Step 8 (measurement only): logs one structured timing line per search,
+// once the reactive filter effect has produced its result and the browser
+// is about to paint it (rAF approximates "first render").
+function logSearchTimingIfPending(searchTimingRef, pendingSearchTimingRef, filterMs, resultCount) {
+  if (!pendingSearchTimingRef.current) return
+  const t = searchTimingRef.current
+  pendingSearchTimingRef.current = false
+  requestAnimationFrame(() => {
+    console.log('[search-timing]', {
+      boardSourceTimings: t.sourceTimings,
+      boardsFetchMs: t.fetchMs,
+      boardsPayloadBytes: t.payloadBytes,
+      adzunaMs: t.adzunaMs,
+      mergeFilterFirstRenderMs: Math.round(performance.now() - t.dataReadyAt),
+      filterMs,
+      resultCount,
+      wallClockMs: Math.round(performance.now() - t.searchStart),
+    })
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,11 +132,18 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   const [expanded, setExpanded] = useState({})
   const [addModal, setAddModal] = useState(null)
   const [boardErrors, setBoardErrors] = useState([])
+  const [boardsCacheInfo, setBoardsCacheInfo] = useState(null) // {age} when the last boards response was cached
   const [requestedAshbySlugs, setRequestedAshbySlugs] = useState([])
   const [dismissed, setDismissed] = useState(() => storage.getDismissed())
   const [dismissedCount, setDismissedCount] = useState(0)
   const [justDismissed, setJustDismissed] = useState({}) // url -> true, transient undo-row markers
   const [showHidden, setShowHidden] = useState(false)
+
+  // Step 8 (measurement only): carries per-search timing across the async
+  // fetch phase and into the reactive filter effect so one structured line
+  // can be logged per search, not per filter toggle.
+  const searchTimingRef = useRef(null)
+  const pendingSearchTimingRef = useRef(false)
 
   const noSourceActive = !sources.greenhouse && !sources.adzuna && !sources.ashby && !sources.lever
 
@@ -143,7 +184,11 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
   // `jobs` keeps dismissed entries in place (ordered) so undo-row / show-hidden
   // rendering can still find them; dismissedCount drives the summary line and toggle.
   useEffect(() => {
-    if (!rawJobs.length) return
+    if (!rawJobs.length) {
+      logSearchTimingIfPending(searchTimingRef, pendingSearchTimingRef, 0, 0)
+      return
+    }
+    const filterStart = performance.now()
     const hours = recency === '24h' ? 24 : recency === '48h' ? 48 : 0
     const dated = rawJobs.filter(j => withinHours(j, hours))
     let result = usOnly ? dated.filter(j => isUS(j)) : dated
@@ -164,9 +209,11 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     if (usOnly && nonUS) parts.push(`${nonUS} non-US hidden`)
     if (expFilter && expDropped) parts.push(`${expDropped} over ${maxYears}yr exp hidden`)
     if (dCount) parts.push(`${dCount} dismissed hidden`)
+    const filterMs = Math.round(performance.now() - filterStart)
     setJobs(result)
     setDismissedCount(dCount)
     setStatus(parts.join(' · '))
+    logSearchTimingIfPending(searchTimingRef, pendingSearchTimingRef, filterMs, result.length)
   }, [rawJobs, recency, usOnly, expFilter, maxYears, dismissed])
 
   // The undo row is only good "until the next search or filter change" -- clear it
@@ -175,12 +222,15 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     setJustDismissed({})
   }, [rawJobs, recency, usOnly, expFilter, maxYears])
 
-  async function handleSearch() {
+  async function handleSearch({ forceRefresh = false } = {}) {
+    const searchStart = performance.now() // step 8: wall-clock start (Search click)
+
     setLoading(true)
     setStatus('')
     setJobs([])
     setRawJobs([])
     setBoardErrors([])
+    setBoardsCacheInfo(null)
     setRequestedAshbySlugs([])
 
     const adzunaMaxDaysOld = recency === '24h' ? 1 : recency === '48h' ? 2 : 7
@@ -195,24 +245,72 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
     const ashbySlugs = sources.ashby ? ashbyCompanies.map(c => c.slug) : []
     setRequestedAshbySlugs(ashbySlugs)
 
-    let boardJobs = []
-    if (activeBoardSources.length) {
-      const result = await fetchBoards(activeBoardSources)
-        .catch(e => { console.warn('boards fetch failed:', e.message); return { jobs: [], errors: [] } })
-      boardJobs = result.jobs ?? []
-      setBoardErrors(result.errors ?? [])
+    let boardJobs = [], fetchMs = null, payloadBytes = null, sourceTimings = null
+    let azJobs = [], adzunaMs = null
+
+    // Boards and Adzuna fire together; Adzuna keeps its own 400ms internal pacing.
+    // Board sources win dedup priority (shared/merge.js), so rendering Adzuna
+    // before boards would cause visible card swaps once boards lands. Boards
+    // renders the moment it settles if Adzuna is still running; whichever phase
+    // settles second performs the one merged render.
+    let boardsSettled = !activeBoardSources.length
+    let adzunaSettled = !sources.adzuna
+    let finished = false
+
+    function finishIfBothSettled() {
+      if (finished || !boardsSettled || !adzunaSettled) return
+      finished = true
+      const dataReadyAt = performance.now() // step 8: all responses in hand, about to merge
+      searchTimingRef.current = { searchStart, dataReadyAt, fetchMs, payloadBytes, sourceTimings, adzunaMs }
+      pendingSearchTimingRef.current = true
+      // Store full merged set; useEffect above applies date/US/exp filters reactively
+      setRawJobs(mergeJobs([boardJobs, azJobs]))
+      setLoading(false)
     }
 
-    // Adzuna keyword discovery: serialized, runs after boards (unchanged sequencing)
-    let azJobs = []
-    if (sources.adzuna) {
-      azJobs = await fetchAdzunaMode2(setStatus, adzunaMaxDaysOld)
-    }
+    const boardsPromise = (activeBoardSources.length
+      ? fetchBoards(activeBoardSources, forceRefresh).catch(e => {
+          console.warn('boards fetch failed:', e.message)
+          return { data: { jobs: [], errors: [] }, fetchMs: null, payloadBytes: null }
+        })
+      : Promise.resolve({ data: { jobs: [], errors: [] }, fetchMs: null, payloadBytes: null })
+    ).then(({ data, fetchMs: fMs, payloadBytes: pBytes }) => {
+      boardJobs = data.jobs ?? []
+      sourceTimings = data.timings ?? null
+      fetchMs = fMs
+      payloadBytes = pBytes
+      setBoardErrors(data.errors ?? [])
+      setBoardsCacheInfo(data.cached ? { age: data.age } : null)
+      boardsSettled = true
+      if (!adzunaSettled) setRawJobs(boardJobs) // render boards now, Adzuna merges in later
+      finishIfBothSettled()
+    })
 
-    // Store full merged set; useEffect above applies date/US/exp filters reactively
-    setRawJobs(mergeJobs([boardJobs, azJobs]))
-    setLoading(false)
+    const adzunaStart = performance.now()
+    const adzunaPromise = (sources.adzuna
+      ? fetchAdzunaMode2(setStatus, adzunaMaxDaysOld)
+      : Promise.resolve([])
+    ).then(jobsFound => {
+      azJobs = jobsFound
+      adzunaMs = sources.adzuna ? Math.round(performance.now() - adzunaStart) : null
+      adzunaSettled = true
+      finishIfBothSettled() // no-op if boards hasn't landed yet -- holds so Adzuna never renders first
+    })
+
+    await Promise.all([boardsPromise, adzunaPromise])
   }
+
+  const cacheBadge = boardsCacheInfo && (
+    <>
+      {' · results from '}{formatCacheAge(boardsCacheInfo.age)}{' '}
+      <button
+        onClick={() => handleSearch({ forceRefresh: true })}
+        style={{ background: 'none', border: 'none', color: COLORS.accent, fontSize: 12, cursor: 'pointer', padding: 0 }}
+      >
+        Refresh
+      </button>
+    </>
+  )
 
   return (
     <div>
@@ -309,10 +407,16 @@ export default function FindJobs({ applications, resumes, onAddApplication }) {
       </div>
 
       {status && !loading && (
-        <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>{status}</div>
+        <div style={{ fontSize: 12, color: COLORS.textMuted, marginBottom: 12 }}>
+          {status}
+          {cacheBadge}
+        </div>
       )}
       {loading && (
-        <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 12 }}>{status}</div>
+        <div style={{ fontSize: 12, color: COLORS.textSecondary, marginBottom: 12 }}>
+          {status}
+          {cacheBadge}
+        </div>
       )}
 
       <BoardsFailureBanner errors={boardErrors} requestedAshbySlugs={requestedAshbySlugs} />

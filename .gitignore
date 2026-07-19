@@ -4,3 +4,4 @@ node_modules
 dist
 cron/.seen-jobs.json
 *.log
+cron/digest.log

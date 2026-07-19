@@ -8,6 +8,8 @@ import { normalizeAdzuna } from './normalize.js'
 // Adzuna rate-limits at ~2 req/sec — callers must put 400ms between calls.
 const PACING_MS = 400
 
+const FETCH_TIMEOUT_MS = 15000
+
 let callCount = 0
 let lastCallAt = 0
 
@@ -51,9 +53,10 @@ export async function adzunaRequest(params, { page = 1 } = {}) {
 
   let res
   try {
-    res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(15000) })
+    res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   } catch (e) {
-    return { ok: false, status: null, reason: 'network_error', detail: e.message }
+    const reason = e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'timeout' : 'network_error'
+    return { ok: false, status: null, reason, detail: e.message }
   }
 
   if (res.status === 401 || res.status === 403) {
@@ -69,7 +72,13 @@ export async function adzunaRequest(params, { page = 1 } = {}) {
     return { ok: false, status: res.status, reason: 'http_error', detail: text.slice(0, 200) }
   }
 
-  const data = await res.json()
+  let data
+  try {
+    data = await res.json()
+  } catch (e) {
+    const reason = e?.name === 'TimeoutError' || e?.name === 'AbortError' ? 'timeout' : 'parse_error'
+    return { ok: false, status: res.status, reason, detail: e.message }
+  }
   return { ok: true, data }
 }
 

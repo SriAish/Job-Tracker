@@ -31,8 +31,19 @@ function decodeEntities(str) {
   return current
 }
 
+const DESCRIPTION_MAX_CHARS = 1500
+
+// Cuts at the last word boundary before the limit rather than mid-word.
+function truncateDescription(text) {
+  if (text.length <= DESCRIPTION_MAX_CHARS) return text
+  const cut = text.slice(0, DESCRIPTION_MAX_CHARS)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim()
+}
+
 function decodeAndStripHtml(html) {
-  return decodeEntities(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const clean = decodeEntities(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return truncateDescription(clean)
 }
 
 function toEpochMs(value) {
@@ -87,7 +98,7 @@ export function normalizeAdzuna(job) {
     location: adzunaLocation(job),
     url: job.redirect_url ?? '',
     postedAt: toEpochMs(job.created),
-    description: job.description ?? '',
+    description: truncateDescription(job.description ?? ''),
     source: 'adzuna',
   }
 }
