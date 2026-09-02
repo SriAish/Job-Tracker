@@ -59,6 +59,21 @@ export const greenhouse = [
   // VC / investing
   { slug: 'a16z',             name: 'a16z' },
   { slug: 'generalcatalyst',  name: 'General Catalyst' },
+  // Added from target company sweep
+  { slug: 'bcg',              name: 'BCG' },
+  { slug: 'coursera',         name: 'Coursera' },
+  { slug: 'hubspot',          name: 'HubSpot' },
+  { slug: 'netskope',         name: 'Netskope' },
+  { slug: 'roblox',           name: 'Roblox' },
+  { slug: 'rubrik',           name: 'Rubrik' },
+  { slug: 'sofi',             name: 'SoFi' },
+  { slug: 'thoughtworks',     name: 'Thoughtworks' },
+  { slug: 'typeface',         name: 'Typeface' },
+  { slug: 'zscaler',          name: 'Zscaler' },
+  { slug: 'sambanovasystems', name: 'SambaNova' },
+  { slug: 'block',            name: 'Square (Block)' },
+  { slug: 'flyzipline',       name: 'Zipline' },
+  { slug: 'underdog',         name: 'Underdog Fantasy' },
 ]
 
 export const lever = [
@@ -117,4 +132,24 @@ export const ashby = [
   { slug: 'greylock',         name: 'Greylock' },
   { slug: 'indexventures',    name: 'Index Ventures' },
   { slug: 'insightpartners',  name: 'Insight Partners' },
+  // Added from target company sweep
+  { slug: 'assorthealth',           name: 'Assort Health' },
+  { slug: 'confluent',              name: 'Confluent' },
+  { slug: 'cuspai',                 name: 'Cusp.ai' },
+  { slug: 'engram',                 name: 'Engram' },
+  { slug: 'lassie',                 name: 'Lassie' },
+  { slug: 'perplexity',             name: 'Perplexity' },
+  { slug: 'runlayer',               name: 'Runlayer' },
+  { slug: 'runpod',                 name: 'RunPod' },
+  { slug: 'scribe',                 name: 'Scribe' },
+  { slug: 'sekai',                  name: 'Sekai' },
+  { slug: 'snowflake',              name: 'Snowflake' },
+  { slug: 'suno',                   name: 'SUNO' },
+  { slug: 'town',                   name: 'TOWN' },
+  { slug: 'zapier',                 name: 'Zapier' },
+  { slug: 'aurora-operations-inc',  name: 'Aurora' },
+  { slug: 'marqeta-inc',            name: 'Marqeta' },
+  { slug: 'hims-and-hers',          name: 'Hims & Hers' },
+  { slug: 'trm-labs',               name: 'TRM Labs' },
+  { slug: 'whatnot',                name: 'Whatnot' },
 ]

@@ -3,7 +3,7 @@
 The daily digest is scheduled by a macOS LaunchAgent. The reference plist
 lives at `cron/launchd/local.jobtracker.digest.plist`; the live copy is
 `~/Library/LaunchAgents/local.jobtracker.digest.plist`. It runs
-`cron/jobtrack.js` at 9:00 AM daily with a 30 second startup wait (the
+`cron/jobtrack.js` at 7:00 AM daily with a 30 second startup wait (the
 `wait` flag) so a wake-from-sleep run does not race Wi-Fi reconnection.
 Output goes to `cron/digest.log` (gitignored).
 

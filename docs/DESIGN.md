@@ -45,7 +45,7 @@ Non-goals:
                              | imports
         +--------------------------------------------+
         | cron/jobtrack.js  (runs on laptop only)    |
-        | launchd LaunchAgent, daily 9:00 AM         |
+        | launchd LaunchAgent, daily 7:00 AM         |
         | fetch -> filter 48h -> dedup -> email      |
         +--------------------------------------------+
 ```
@@ -159,7 +159,7 @@ Latency: boards.js already fetches all companies fully in parallel (nested Promi
 
 Scheduling: a LaunchAgent plist in `~/Library/LaunchAgents` (a reference copy lives in the repo), with:
 
-- `StartCalendarInterval` at 9:00 AM daily. A run missed during sleep fires once on wake, coalesced. A run missed while powered off is skipped, which the 48h window absorbs.
+- `StartCalendarInterval` at 7:00 AM daily. A run missed during sleep fires once on wake, coalesced. A run missed while powered off is skipped, which the 48h window absorbs.
 - `ProgramArguments` uses the absolute node path (launchd has no shell PATH, no nvm).
 - `WorkingDirectory` set to the repo so `.env` and `.seen-jobs.json` resolve.
 - `StandardOutPath` / `StandardErrorPath` to a gitignored log file in `cron/`.
@@ -212,4 +212,4 @@ Each step is one Claude Code session with its own prompt, diff scope, and accept
 9. Latency fixes. Parallel Adzuna at Search click with merge-time dedup; incremental render; 30-minute warm cache with forceRefresh; truncation if step 8 says so.
 10. launchd setup. Plist per section 7; reference copy in the repo; load and verify on the laptop. Runbook step more than a code step.
 
-Baked-in defaults, veto before running the relevant step: digest at 9:00 AM (matches the current crontab line); cache TTL 30 minutes.
+Baked-in defaults, veto before running the relevant step: digest at 7:00 AM (matches the current crontab line); cache TTL 30 minutes.

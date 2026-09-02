@@ -17,7 +17,7 @@ const SEEN_FILE = path.join(__dirname, '.seen-jobs.json')
 const DRY_RUN = process.argv.includes('--dry-run')
 const waitFlagIndex = process.argv.indexOf('--wait')
 const WAIT_SECONDS = waitFlagIndex === -1 ? 0 : Number(process.argv[waitFlagIndex + 1]) || 0
-const DIGEST_WINDOW_HOURS = 192
+const DIGEST_WINDOW_HOURS = 48
 
 // Tolerant load: entries are keyed by job URL. An old-format file (array of
 // source ids) simply won't match any current URL, which is fine — it just
